@@ -38,6 +38,10 @@ export default function ForgotPasswordForm() {
                 // ¡Bloqueamos el botón para evitar spam de tokens en Mailtrap!
                 setIsSuccess(true);
             }
+            setTimeout(() => {
+                navigate('/reset-password');
+            }, 2500);
+
         } catch (error) {
             if (error instanceof AxiosError && error.response) {
                 setStatusMessage({ type: 'error', text: error.response.data.message || 'Error al solicitar recuperación.' });
