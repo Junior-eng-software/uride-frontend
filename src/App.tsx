@@ -6,10 +6,22 @@ import UserProfile from './components/profile/UserProfile';
 import EditProfileForm from './components/profile/EditProfileForm';
 import ForgotPasswordForm from './components/auth/ForgotPasswordForm';
 import ResetPasswordForm from './components/auth/ResetPasswordForm';
+import SearchRidesView from './pages/SearchRidesView';
+import JoinRideView from './pages/JoinRideView';
+import ManageRideView from './pages/ManageRideView';
+
+
+// --- Importaciones del Sprint 6 ---
+import CreateRideView from './pages/CreateRideView';
+// Importaremos la vista de búsqueda en el siguiente paso
+// import SearchRidesView from './pages/SearchRidesView'; 
+
 import type { ReactNode } from 'react';
 
 // 1. [CRÍTICO] Creamos un "Guardián" que lee el token en tiempo real
 const ProtectedRoute = ({ children }: { children: ReactNode }) => {
+  // Nota: Respeto tu clave 'accessToken' de la versión estable. 
+  // Asegúrate de que tu LoginForm guarde el token exactamente con este mismo nombre.
   const isAuth = !!localStorage.getItem('accessToken');
   return isAuth ? children : <Navigate to="/login" />;
 };
@@ -26,6 +38,8 @@ export default function App() {
         <Route path="/login" element={<LoginForm />} />
         <Route path="/forgot-password" element={<ForgotPasswordForm />} />
         <Route path="/reset-password" element={<ResetPasswordForm />} />
+        <Route path="/search" element={<SearchRidesView />} />
+        <Route path="/rides/search" element={<SearchRidesView />} />
 
 
         {/* ─── RUTAS PROTEGIDAS ─── */}
@@ -43,6 +57,33 @@ export default function App() {
           element={
             <ProtectedRoute>
               <EditProfileForm />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* --- Rutas del Módulo de Viajes (Sprint 6) --- */}
+        <Route
+          path="/rides/create"
+          element={
+            <ProtectedRoute>
+              <CreateRideView />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/rides/:id/join"
+          element={
+            <ProtectedRoute>
+              <JoinRideView />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/rides/:id/manage"
+          element={
+            <ProtectedRoute>
+              <ManageRideView />
             </ProtectedRoute>
           }
         />

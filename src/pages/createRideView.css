@@ -1,0 +1,269 @@
+/* CreateRideView.css */
+:root {
+  --primary-green: #22c55e;
+  --sidebar-bg: #1e293b;
+  --bg-gray: #f8fafc;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --border-color: #e2e8f0;
+  --card-bg: #ffffff;
+}
+
+.u-ride-container {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  min-height: 100vh;
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-gray);
+}
+
+/* Sidebar */
+.sidebar {
+  background-color: var(--sidebar-bg);
+  color: white;
+  padding: 2rem 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.logo {
+  padding: 0 2rem;
+  margin-bottom: 3rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nav-menu {
+  list-style: none;
+  padding: 0;
+}
+
+.nav-item {
+  padding: 1rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.nav-item.active {
+  color: white;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-left: 4px solid var(--primary-green);
+}
+
+.nav-item:hover:not(.active) {
+  color: white;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Main Content */
+.main-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  height: 70px;
+  background: white;
+  border-bottom: 1px solid var(--border-color);
+  padding: 0 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header h1 {
+  font-size: 1.25rem;
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.user-info {
+  text-align: right;
+}
+
+.user-name {
+  display: block;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.user-role {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #cbd5e1;
+}
+
+.view-layout {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 2rem;
+  padding: 2rem;
+  height: calc(100vh - 70px);
+}
+
+/* Map Placeholder */
+.map-placeholder {
+  background-color: #e2e8f0;
+  border-radius: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-weight: 500;
+  border: 2px dashed #cbd5e1;
+}
+
+/* Form Panel */
+.form-card {
+  background: white;
+  border-radius: 1rem;
+  padding: 2rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.form-card h2 {
+  font-size: 1.125rem;
+  margin-bottom: 0.5rem;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.input-group label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.input-with-icon {
+  position: relative;
+}
+
+.input-with-icon i {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+}
+
+.input-with-icon input {
+  width: 100%;
+  padding: 0.75rem 1rem 0.75rem 2.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.date-time-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.preference-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.toggle-btn {
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  background: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.toggle-btn i {
+  font-size: 1.25rem;
+}
+
+.toggle-btn.active {
+  background-color: #0f172a;
+  color: white;
+  border-color: #0f172a;
+}
+
+.submit-btn {
+  margin-top: auto;
+  background-color: var(--primary-green);
+  color: white;
+  border: none;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.submit-btn:hover {
+  opacity: 0.9;
+}
+
+/* --- Ajustes Responsivos (Móvil y Tablets) --- */
+@media (max-width: 992px) {
+  .u-ride-container {
+    grid-template-columns: 1fr; /* Colapsa la barra lateral */
+  }
+
+  .sidebar {
+    display: none; /* Ocultamos el sidebar en móvil por ahora */
+  }
+
+  .view-layout {
+    grid-template-columns: 1fr; /* Apila el mapa y el formulario */
+    height: auto;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .map-placeholder {
+    height: 200px; /* Le damos altura fija al mapa en móvil */
+  }
+
+  .date-time-row {
+    grid-template-columns: 1fr; /* Apila Fecha y Hora */
+  }
+
+  .preference-grid {
+    grid-template-columns: 1fr 1fr; /* Mantiene dos columnas para botones pequeños */
+  }
+}

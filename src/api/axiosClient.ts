@@ -4,7 +4,7 @@ import axios from 'axios';
 // Apuntamos al puerto 5019 que Visual Studio asignó por defecto.
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5019/api';
 
-export const api = axios.create({
+const axiosClient = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
@@ -12,8 +12,9 @@ export const api = axios.create({
 });
 
 // Patrón Interceptor: Mantiene la sesión activa enviando el token en cada llamada
-api.interceptors.request.use(
+axiosClient.interceptors.request.use(
   (config) => {
+    // Mantenemos 'accessToken' tal como lo leemos en tu ProtectedRoute
     const token = localStorage.getItem('accessToken');
     
     if (token) {
@@ -26,3 +27,8 @@ api.interceptors.request.use(
     return Promise.reject(error);
   }
 );
+
+// Exportación por defecto obligatoria para que los servicios lo importen correctamente
+export default axiosClient;
+
+export const api = axiosClient;
