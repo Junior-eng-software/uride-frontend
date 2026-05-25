@@ -9,10 +9,13 @@ import ResetPasswordForm from './components/auth/ResetPasswordForm';
 import SearchRidesView from './pages/SearchRidesView';
 import JoinRideView from './pages/JoinRideView';
 import ManageRideView from './pages/ManageRideView';
-
+import RideRatingView from './pages/RideRatingView';
+import DashboardView from './pages/dashBoardView';
+import AdminDashboardView from './pages/adminDashboardView';
+import { getCurrentUserRole } from './utils/auth';
 
 // --- Importaciones del Sprint 6 ---
-import CreateRideView from './pages/CreateRideView';
+import CreateRideView from './pages/createRideView';
 // Importaremos la vista de búsqueda en el siguiente paso
 // import SearchRidesView from './pages/SearchRidesView'; 
 
@@ -24,6 +27,12 @@ const ProtectedRoute = ({ children }: { children: ReactNode }) => {
   // Asegúrate de que tu LoginForm guarde el token exactamente con este mismo nombre.
   const isAuth = !!localStorage.getItem('accessToken');
   return isAuth ? children : <Navigate to="/login" />;
+};
+
+const AdminRoute = ({ children }: { children: ReactNode }) => {
+  const role = getCurrentUserRole();
+
+  return role === 'Admin' ? children : <Navigate to="/dashboard" />;
 };
 
 export default function App() {
@@ -60,6 +69,24 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <DashboardView />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <AdminRoute>
+                <AdminDashboardView />
+              </AdminRoute>
+            </ProtectedRoute>
+          }
+        />
 
         {/* --- Rutas del Módulo de Viajes (Sprint 6) --- */}
         <Route
@@ -84,6 +111,15 @@ export default function App() {
           element={
             <ProtectedRoute>
               <ManageRideView />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/rides/:id/rating"
+          element={
+            <ProtectedRoute>
+              <RideRatingView />
             </ProtectedRoute>
           }
         />

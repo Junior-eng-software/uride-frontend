@@ -26,6 +26,14 @@ export interface RideSearchFilters {
   from?: string; 
   to?: string; 
   availableOnly?: boolean;
+  userId?: string;
   page?: number;
   pageSize?: number;
+}
+
+export interface CreateRatingPayload {
+  rideId: string;
+  rateeId: string;
+  score: number;
+  comment?: string;
 }

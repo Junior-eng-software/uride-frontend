@@ -17,51 +17,6 @@
   background-color: var(--bg-gray);
 }
 
-/* Sidebar */
-.sidebar {
-  background-color: var(--sidebar-bg);
-  color: white;
-  padding: 2rem 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.logo {
-  padding: 0 2rem;
-  margin-bottom: 3rem;
-  font-size: 1.5rem;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.nav-menu {
-  list-style: none;
-  padding: 0;
-}
-
-.nav-item {
-  padding: 1rem 2rem;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  color: #94a3b8;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.nav-item.active {
-  color: white;
-  background-color: rgba(255, 255, 255, 0.1);
-  border-left: 4px solid var(--primary-green);
-}
-
-.nav-item:hover:not(.active) {
-  color: white;
-  background-color: rgba(255, 255, 255, 0.05);
-}
-
 /* Main Content */
 .main-content {
   display: flex;
@@ -186,38 +141,6 @@
   gap: 1rem;
 }
 
-.preference-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
-}
-
-.toggle-btn {
-  padding: 1rem;
-  border: 1px solid var(--border-color);
-  border-radius: 0.5rem;
-  background: white;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.toggle-btn i {
-  font-size: 1.25rem;
-}
-
-.toggle-btn.active {
-  background-color: #0f172a;
-  color: white;
-  border-color: #0f172a;
-}
-
 .submit-btn {
   margin-top: auto;
   background-color: var(--primary-green);
@@ -244,7 +167,7 @@
     grid-template-columns: 1fr; /* Colapsa la barra lateral */
   }
 
-  .sidebar {
+  .app-sidebar {
     display: none; /* Ocultamos el sidebar en móvil por ahora */
   }
 
@@ -263,7 +186,4 @@
     grid-template-columns: 1fr; /* Apila Fecha y Hora */
   }
 
-  .preference-grid {
-    grid-template-columns: 1fr 1fr; /* Mantiene dos columnas para botones pequeños */
-  }
 }

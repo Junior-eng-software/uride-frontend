@@ -1,11 +1,6 @@
-/**
- * Extrae y decodifica el ID del usuario directamente del JWT almacenado en el navegador.
- * Maneja internamente los claims de .NET 8 con fallback estándar.
- * @returns {string | null} El ID del usuario o null si no hay sesión/token válido.
- */
-export function getCurrentUserId(): string | null {
+function decodeJwtPayload(): Record<string, unknown> | null {
     const token = localStorage.getItem('accessToken');
-    
+
     if (!token) {
         return null;
     }
@@ -22,14 +17,33 @@ export function getCurrentUserId(): string | null {
             }).join('')
         );
 
-        const payload = JSON.parse(jsonPayload);
-        
-        // Retornamos el claim específico de .NET o el 'sub' (subject) estándar
-        return payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] 
-               || payload.sub 
-               || null;
+        return JSON.parse(jsonPayload) as Record<string, unknown>;
     } catch (error) {
         console.error('Error al decodificar el token JWT:', error);
         return null;
     }
+}   
+
+/**
+ * Extrae y decodifica el ID del usuario directamente del JWT almacenado en el navegador.
+ * Maneja internamente los claims de .NET 8 con fallback estándar.
+ * @returns {string | null} El ID del usuario o null si no hay sesión/token válido.
+ */
+export function getCurrentUserId(): string | null {
+    const payload = decodeJwtPayload();
+
+    return payload?.['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] as string
+        ?? payload?.['sub'] as string
+        ?? null;
+}
+
+/**
+ * Extrae el rol actual del usuario desde el JWT almacenado en el navegador.
+ * @returns {string | null} El rol del usuario o null si no hay sesión/token válido.
+ */
+export function getCurrentUserRole(): string | null {
+    const payload = decodeJwtPayload();
+
+    return payload?.['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] as string
+        ?? null;
 }

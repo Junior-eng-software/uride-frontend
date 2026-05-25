@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { api } from '../../api/axiosClient';
 import { AxiosError } from 'axios';
 import './EditProfileForm.css';
+import AppSidebar from '../layout/AppSidebar';
 
 import { useNavigate, Link } from 'react-router-dom';
 
@@ -92,6 +93,10 @@ export default function EditProfileForm() {
         }
     };
 
+    const handleMessagesClick = () => {
+        console.log('Próximamente');
+    };
+
     // ── Nombre en tiempo real para el avatar ───────────────────────────
     const watchedName = watch('fullName') || loadedName;
 
@@ -99,33 +104,7 @@ export default function EditProfileForm() {
     return (
         <div className="ep-app-shell">
             {/* ── Sidebar ── */}
-            <aside className="ep-sidebar">
-                <div className="ep-sidebar-logo">
-                    <div className="ep-sidebar-logo-icon">
-                        <i className="ti ti-car" aria-hidden="true"></i>
-                    </div>
-                    <span className="ep-sidebar-logo-text">U-Ride</span>
-                </div>
-
-                <nav className="ep-sidebar-nav">
-                    <Link to="/dashboard" className="ep-nav-item">
-                        <i className="ti ti-layout-dashboard" aria-hidden="true"></i>
-                        <span>Dashboard</span>
-                    </Link>
-                    <Link to="/profile" className="ep-nav-item ep-nav-item--active">
-                        <i className="ti ti-user-circle" aria-hidden="true"></i>
-                        <span>Mi Perfil</span>
-                    </Link>
-                    <Link to="/trips" className="ep-nav-item">
-                        <i className="ti ti-route" aria-hidden="true"></i>
-                        <span>Mis Viajes</span>
-                    </Link>
-                    <Link to="/messages" className="ep-nav-item">
-                        <i className="ti ti-message-circle" aria-hidden="true"></i>
-                        <span>Mensajes</span>
-                    </Link>
-                </nav>
-            </aside>
+            <AppSidebar />
 
             {/* ── Contenido principal ── */}
             <main className="ep-main">

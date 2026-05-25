@@ -5,6 +5,7 @@ import axios from 'axios';
 import type { Ride } from '../types/rides';
 import { getCurrentUserId } from '../utils/auth';
 import { createRideRequest } from '../services/rideRequestService';
+import AppSidebar from '../components/layout/AppSidebar';
 import './JoinRideView.css';
 
 const JoinRideView: React.FC = () => {
@@ -70,21 +71,7 @@ const JoinRideView: React.FC = () => {
                 onClick={() => setSidebarOpen(false)}
             ></div>
 
-            {/* Sidebar */}
-            <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-                <div className="logo">
-                    <i className="ti ti-car"></i>
-                    <span>U-Ride</span>
-                </div>
-                <nav>
-                    <ul className="nav-menu">
-                        <li className="nav-item"><i className="ti ti-dashboard"></i><span>Dashboard</span></li>
-                        <li className="nav-item"><i className="ti ti-user"></i><span>Mi Perfil</span></li>
-                        <li className="nav-item active"><i className="ti ti-route"></i><span>Mis Viajes</span></li>
-                        <li className="nav-item"><i className="ti ti-message"></i><span>Mensajes</span></li>
-                    </ul>
-                </nav>
-            </aside>
+            <AppSidebar className={sidebarOpen ? 'open' : ''} />
 
             {/* Main Content */}
             <main className="main-content">

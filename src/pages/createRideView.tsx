@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { createRide } from '../services/rideService';
 import { localDatetimeToIso } from '../utils/dateUtils';
 import type { CreateRidePayload } from '../types/rides';
+import AppSidebar from '../components/layout/AppSidebar';
 import './CreateRideView.css';
 import axios from 'axios';
 
@@ -16,22 +17,11 @@ interface RideFormData {
 }
 
 const CreateRideView: React.FC = () => {
-    const [preferences, setPreferences] = useState({
-        music: true,
-        pets: false,
-        womenOnly: false,
-        conversation: true,
-    });
-
     const [isLoading, setIsLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
     const { register, handleSubmit, reset, formState: { errors } } = useForm<RideFormData>();
-
-    const togglePreference = (key: keyof typeof preferences) => {
-        setPreferences(prev => ({ ...prev, [key]: !prev[key] }));
-    };
 
     const onSubmit = async (data: RideFormData) => {
         setIsLoading(true);
@@ -39,34 +29,20 @@ const CreateRideView: React.FC = () => {
         setSuccessMessage(null);
 
         try {
-            // 1. Mapear preferencias activas a un string. 
-            // Eliminamos la destructuración de la clave (_) para evitar el error de ESLint.
-            const activePrefs = Object.keys(preferences)
-                .filter(key => preferences[key as keyof typeof preferences])
-                .map(key => {
-                    const labels: Record<string, string> = {
-                        music: 'Música', pets: 'Mascotas', womenOnly: 'Solo Mujeres', conversation: 'Conversación'
-                    };
-                    return labels[key];
-                })
-                .join(', ');
-
-            const finalNotes = activePrefs ? `Preferencias: ${activePrefs}.` : null;
-
-            // 2. Unir fecha y hora para transformarlo a ISO 8601 local
+            // Unir fecha y hora para transformarlo a ISO 8601 local
             const combinedDateTime = `${data.date}T${data.time}`;
             const isoDepartureAt = localDatetimeToIso(combinedDateTime);
 
-            // 3. Construir el payload exacto que pide el backend
+            // Construir el payload exacto que pide el backend
             const payload: CreateRidePayload = {
                 originZone: data.originZone,
                 destinationZone: data.destinationZone,
                 departureAt: isoDepartureAt,
                 seatCapacity: Number(data.seatCapacity),
-                notes: finalNotes
+                notes: null
             };
 
-            // 4. Enviar al backend
+            // Enviar al backend
             await createRide(payload);
 
             setSuccessMessage('¡Viaje publicado exitosamente!');
@@ -89,33 +65,7 @@ const CreateRideView: React.FC = () => {
 
     return (
         <div className="u-ride-container">
-            {/* Sidebar */}
-            <aside className="sidebar">
-                <div className="logo">
-                    <i className="ti ti-car"></i>
-                    <span>U-Ride</span>
-                </div>
-                <nav>
-                    <ul className="nav-menu">
-                        <li className="nav-item">
-                            <i className="ti ti-dashboard"></i>
-                            <span>Dashboard</span>
-                        </li>
-                        <li className="nav-item">
-                            <i className="ti ti-user"></i>
-                            <span>Mi Perfil</span>
-                        </li>
-                        <li className="nav-item active">
-                            <i className="ti ti-route"></i>
-                            <span>Publicar Viaje</span>
-                        </li>
-                        <li className="nav-item">
-                            <i className="ti ti-message"></i>
-                            <span>Mensajes</span>
-                        </li>
-                    </ul>
-                </nav>
-            </aside>
+            <AppSidebar />
 
             {/* Main Content */}
             <main className="main-content">
@@ -204,46 +154,6 @@ const CreateRideView: React.FC = () => {
                                     defaultValue={3}
                                     {...register('seatCapacity', { required: true, min: 1, max: 4 })}
                                 />
-                            </div>
-                        </div>
-
-                        <div className="preferences-section">
-                            <label style={{ fontSize: '0.875rem', fontWeight: 500, color: '#64748b', marginBottom: '0.5rem', display: 'block' }}>
-                                Preferencias del Viaje
-                            </label>
-                            <div className="preference-grid">
-                                <button
-                                    type="button"
-                                    className={`toggle-btn ${preferences.music ? 'active' : ''}`}
-                                    onClick={() => togglePreference('music')}
-                                >
-                                    <i className="ti ti-music"></i>
-                                    <span>Música</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    className={`toggle-btn ${preferences.pets ? 'active' : ''}`}
-                                    onClick={() => togglePreference('pets')}
-                                >
-                                    <i className="ti ti-paw"></i>
-                                    <span>Mascotas</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    className={`toggle-btn ${preferences.womenOnly ? 'active' : ''}`}
-                                    onClick={() => togglePreference('womenOnly')}
-                                >
-                                    <i className="ti ti-woman"></i>
-                                    <span>Solo Mujeres</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    className={`toggle-btn ${preferences.conversation ? 'active' : ''}`}
-                                    onClick={() => togglePreference('conversation')}
-                                >
-                                    <i className="ti ti-messages"></i>
-                                    <span>Conversación</span>
-                                </button>
                             </div>
                         </div>
 

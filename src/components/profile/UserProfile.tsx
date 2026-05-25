@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../../api/axiosClient';
 import { AxiosError } from 'axios';
 import './UserProfile.css';
+import AppSidebar from '../layout/AppSidebar';
 
 // [CORRECCIÓN] Importamos Link junto con useNavigate
 import { useNavigate, Link } from 'react-router-dom';
@@ -57,18 +58,12 @@ export default function UserProfile() {
         navigate('/login'); // Usamos navigate en lugar de recargar la página entera
     };
 
+
     // ── Estados de carga y error rediseñados ───────────────────────────
     if (isLoading) {
         return (
             <div className="up-app-shell">
-                <aside className="up-sidebar">
-                    <div className="up-sidebar-logo">
-                        <div className="up-sidebar-logo-icon">
-                            <i className="ti ti-car" aria-hidden="true"></i>
-                        </div>
-                        <span className="up-sidebar-logo-text">U-Ride</span>
-                    </div>
-                </aside>
+                <AppSidebar />
                 <main className="up-main">
                     <div className="up-skeleton-wrapper">
                         <div className="up-skeleton up-skeleton--avatar"></div>
@@ -83,14 +78,7 @@ export default function UserProfile() {
     if (error) {
         return (
             <div className="up-app-shell">
-                <aside className="up-sidebar">
-                    <div className="up-sidebar-logo">
-                        <div className="up-sidebar-logo-icon">
-                            <i className="ti ti-car" aria-hidden="true"></i>
-                        </div>
-                        <span className="up-sidebar-logo-text">U-Ride</span>
-                    </div>
-                </aside>
+                <AppSidebar />
                 <main className="up-main">
                     <div className="up-error-card">
                         <i className="ti ti-shield-off" aria-hidden="true"></i>
@@ -113,34 +101,7 @@ export default function UserProfile() {
         <div className="up-app-shell">
 
             {/* ── Sidebar ── */}
-            <aside className="up-sidebar">
-                <div className="up-sidebar-logo">
-                    <div className="up-sidebar-logo-icon">
-                        <i className="ti ti-car" aria-hidden="true"></i>
-                    </div>
-                    <span className="up-sidebar-logo-text">U-Ride</span>
-                </div>
-
-                <nav className="up-sidebar-nav">
-                    {/* [CORRECCIÓN] Cambiamos <a> por <Link> y href por to */}
-                    <Link to="/dashboard" className="up-nav-item">
-                        <i className="ti ti-layout-dashboard" aria-hidden="true"></i>
-                        <span>Dashboard</span>
-                    </Link>
-                    <Link to="/profile" className="up-nav-item up-nav-item--active">
-                        <i className="ti ti-user-circle" aria-hidden="true"></i>
-                        <span>Mi Perfil</span>
-                    </Link>
-                    <Link to="/trips" className="up-nav-item">
-                        <i className="ti ti-route" aria-hidden="true"></i>
-                        <span>Mis Viajes</span>
-                    </Link>
-                    <Link to="/messages" className="up-nav-item">
-                        <i className="ti ti-message-circle" aria-hidden="true"></i>
-                        <span>Mensajes</span>
-                    </Link>
-                </nav>
-            </aside>
+            <AppSidebar />
 
             {/* ── Contenido principal ── */}
             <main className="up-main">
