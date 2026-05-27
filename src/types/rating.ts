@@ -8,7 +8,7 @@ export interface RatingResponse {
   rateeId: string;
   rateeName: string;
   score: number;
-  comment: string;
+  comment: string | null;
   createdAt: string;
 }
 

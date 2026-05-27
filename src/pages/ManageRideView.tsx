@@ -2,17 +2,22 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { getRideRequests, respondToRideRequest } from '../services/rideRequestService';
-import { completeRide } from '../services/rideService';
+import { completeRide, getMyRides } from '../services/rideService';
+import { getRideRatings } from '../services/ratingService';
 import type { RideRequest } from '../types/rideRequest';
 import type { Ride } from '../types/rides';
-import type { RatingNavigationState } from '../types/rating';
+import type { RatingNavigationState, RatingResponse } from '../types/rating';
+import axios from 'axios';
 import { getCurrentUserId } from '../utils/auth';
 import AppSidebar from '../components/layout/AppSidebar';
+import NotificationBell from '../components/notifications/NotificationBell';
 import './ManageRideView.css';
 
 const ManageRideView: React.FC = () => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [ride, setRide] = useState<Ride | null>(null);
     const [requests, setRequests] = useState<RideRequest[]>([]);
+    const [existingRatings, setExistingRatings] = useState<RatingResponse[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isCompleting, setIsCompleting] = useState(false);
@@ -20,11 +25,64 @@ const ManageRideView: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const { id: rideIdFromUrl } = useParams<{ id: string }>();
-    const ride = location.state?.ride as Ride | undefined;
+    const fallbackRide = location.state?.ride as Ride | undefined;
     const currentUserId = getCurrentUserId();
+    const driverId = ride?.driverId ?? null;
+    const driverName = ride?.driverName ?? null;
     const isDriver = currentUserId === ride?.driverId;
     const rideId = ride?.id ?? rideIdFromUrl;
     const isCompletedRide = ride?.status === 'Completed';
+    const canComplete = ride?.status === 'Published';
+
+    const hasAlreadyRated = (rateeId?: string | null): boolean => {
+        if (!rateeId || !currentUserId) {
+            return false;
+        }
+
+        const normalizedCurrentUserId = currentUserId.trim().toLowerCase();
+        const normalizedRateeId = rateeId.trim().toLowerCase();
+
+        return existingRatings.some(
+            rating =>
+                rating.raterId.trim().toLowerCase() === normalizedCurrentUserId &&
+                rating.rateeId.trim().toLowerCase() === normalizedRateeId
+        );
+    };
+
+    const hasCurrentUserRated = (rateeId?: string | null): boolean => hasAlreadyRated(rateeId);
+
+    const renderRatingControl = (rateeId?: string | null, rateeName?: string | null, rateeRole: 'driver' | 'passenger' = 'passenger') => {
+        if (!ride || !rateeId || !rateeName) {
+            return null;
+        }
+
+        if (hasCurrentUserRated(rateeId)) {
+            return (
+                <span className="rating-submitted-badge">
+                    Calificación enviada
+                </span>
+            );
+        }
+
+        return (
+            <button
+                className="btn-rate"
+                onClick={() => {
+                    navigate(`/rides/${rideId}/rating`, {
+                        state: {
+                            ride,
+                            rateeId,
+                            rateeName,
+                            rateeRole,
+                        } satisfies RatingNavigationState,
+                    });
+                }}
+            >
+                <i className="ti ti-star-filled"></i>
+                <span>Calificar</span>
+            </button>
+        );
+    };
 
     useEffect(() => {
         if (!rideId) {
@@ -32,14 +90,39 @@ const ManageRideView: React.FC = () => {
             return;
         }
 
-        const fetchRequests = async () => {
+        const fetchRideData = async () => {
             try {
                 setIsLoading(true);
                 setError(null);
-                const data = await getRideRequests(rideId);
-                setRequests(data);
+
+                let freshRide: Ride | null = fallbackRide ?? null;
+
+                try {
+                    const myRides = await getMyRides();
+                    freshRide = myRides.find(r => r.id === rideId) ?? freshRide;
+                } catch (syncError) {
+                    console.warn('No se pudo sincronizar el viaje desde /api/Rides/me', syncError);
+                }
+
+                setRide(freshRide);
+
+                try {
+                    const requestsData = await getRideRequests(rideId);
+                    setRequests(requestsData);
+                } catch (requestsError) {
+                    console.error('Error cargando solicitudes del viaje', requestsError);
+                    setError('No se pudieron cargar las solicitudes de este viaje.');
+                }
+
+                try {
+                    const ratingsData = await getRideRatings(rideId);
+                    setExistingRatings(ratingsData);
+                } catch (ratingsError) {
+                    console.warn('No se pudieron cargar los ratings del viaje', ratingsError);
+                    setExistingRatings([]);
+                }
             } catch (error) {
-                console.error('Error cargando solicitudes', error);
+                console.error('Error inesperado cargando la vista de viaje', error);
                 setError('No se pudieron cargar las solicitudes de este viaje.');
             } finally {
                 setIsLoading(false);
@@ -47,11 +130,11 @@ const ManageRideView: React.FC = () => {
         };
 
         const timer = window.setTimeout(() => {
-            void fetchRequests();
+            void fetchRideData();
         }, 0);
 
         return () => window.clearTimeout(timer);
-    }, [rideId, navigate]);
+    }, [rideId, navigate, fallbackRide]);
 
     const handleStatusChange = async (requestId: string, newStatus: 'Accepted' | 'Rejected') => {
         if (!rideId) return;
@@ -70,14 +153,32 @@ const ManageRideView: React.FC = () => {
 
     const handleCompleteRide = async () => {
         if (!rideId) return;
+        if (ride?.status !== 'Published') {
+            setError('Este viaje no puede completarse en su estado actual.');
+            return;
+        }
         if (!window.confirm('¿Marcar este viaje como completado?')) return;
 
         try {
             setIsCompleting(true);
             await completeRide(rideId);
-            navigate('/dashboard');
-        } catch {
-            setError('No se pudo completar el viaje. Intenta de nuevo.');
+            const refreshed = await getMyRides();
+            const updated = refreshed.find(r => r.id === rideId) ?? null;
+            setRide(updated ?? ride);
+        } catch (error) {
+            if (axios.isAxiosError(error) && error.response?.status === 400) {
+                setError('El viaje no puede completarse. Recarga la página e inténtalo de nuevo.');
+                try {
+                    const refreshed = await getMyRides();
+                    const updated = refreshed.find(r => r.id === rideId) ?? null;
+                    setRide(updated ?? ride);
+                } catch {
+                    // Si la sincronización falla, mantenemos el error principal.
+                }
+                return;
+            }
+
+            setError('Ocurrió un error al completar el viaje.');
         } finally {
             setIsCompleting(false);
         }
@@ -138,10 +239,7 @@ const ManageRideView: React.FC = () => {
                         </button>
                     </div>
                     <div className="header-right">
-                        <div className="notification-icon">
-                            <i className="ti ti-bell"></i>
-                            <span className="badge">2</span>
-                        </div>
+                        <NotificationBell />
                         <div className="user-profile">
                             <div className="avatar"></div>
                         </div>
@@ -244,30 +342,10 @@ const ManageRideView: React.FC = () => {
                                                     <span className="major">Estudiante Confirmado</span>
                                                 </div>
                                             </div>
-                                            {isCompletedRide && (
-                                                <button
-                                                    className="btn-rate"
-                                                    onClick={() => {
-                                                        const rateeId = isDriver ? passenger.passengerId : ride?.driverId;
-                                                        const rateeName = isDriver ? passenger.passengerName : ride?.driverName;
-
-                                                        if (!rateeId || !rateeName) {
-                                                            return;
-                                                        }
-
-                                                        navigate(`/rides/${rideId}/rating`, {
-                                                            state: {
-                                                                ride,
-                                                                rateeId,
-                                                                rateeName,
-                                                                rateeRole: isDriver ? 'passenger' : 'driver',
-                                                            } satisfies RatingNavigationState,
-                                                        });
-                                                    }}
-                                                >
-                                                    <i className="ti ti-star-filled"></i>
-                                                    <span>Calificar</span>
-                                                </button>
+                                            {isCompletedRide && isDriver && renderRatingControl(
+                                                passenger.passengerId,
+                                                passenger.passengerName,
+                                                'passenger'
                                             )}
                                         </div>
                                     ))}
@@ -281,11 +359,12 @@ const ManageRideView: React.FC = () => {
                                             </div>
                                         </div>
                                     ))}
+                                    {isCompletedRide && !isDriver && renderRatingControl(driverId, driverName, 'driver')}
                                     {isCompletedRide && confirmedRequests.length === 0 && (
                                         <p className="empty-history">No hubo pasajeros confirmados en este viaje.</p>
                                     )}
                                 </div>
-                                {!isCompletedRide && (
+                                {canComplete && (
                                     <button
                                         className="btn-complete"
                                         onClick={handleCompleteRide}
@@ -294,6 +373,9 @@ const ManageRideView: React.FC = () => {
                                         <i className="ti ti-flag-check"></i>
                                         {isCompleting ? 'Completando...' : 'Completar Viaje'}
                                     </button>
+                                )}
+                                {ride?.status === 'Completed' && (
+                                    <span className="rating-submitted-badge" style={{ marginTop: '1rem' }}>Viaje completado</span>
                                 )}
                             </div>
                         </section>

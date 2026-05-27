@@ -7,6 +7,16 @@ import { api } from '../../api/axiosClient';
 import { AxiosError } from 'axios';
 import './LoginForm.css';
 import { useNavigate, Link } from 'react-router-dom';
+import { getRoleFromToken } from '../../utils/auth';
+
+interface LoginResponse {
+    accessToken?: string;
+    refreshToken?: string;
+    token?: string;
+    user?: {
+        role?: string;
+    };
+}
 // ── Schema Zod INTACTO ─────────────────────────────────────────────────
 const loginSchema = z.object({
     email: z.string().email('Correo inválido'),
@@ -32,16 +42,30 @@ export default function LoginForm() {
         setStatusMessage(null);
 
         try {
-            const response = await api.post('/auth/login', data);
+            const response = await api.post<LoginResponse>('/auth/login', data);
             if (response.status === 200) {
-                localStorage.setItem('accessToken', response.data.accessToken);
-                localStorage.setItem('refreshToken', response.data.refreshToken);
-                navigate('/profile');
+                const token = response.data.accessToken ?? response.data.token;
+                const refreshToken = response.data.refreshToken;
+
+                if (!token) {
+                    throw new Error('La API no devolvió un token de acceso.');
+                }
+
+                localStorage.setItem('accessToken', token);
+
+                if (refreshToken) {
+                    localStorage.setItem('refreshToken', refreshToken);
+                }
+
+                const role = response.data.user?.role ?? getRoleFromToken(token);
+                navigate(role === 'Admin' ? '/admin' : '/dashboard', { replace: true });
                 setStatusMessage({ type: 'success', text: '¡Inicio de sesión exitoso! (JWT Guardado)' });
             }
         } catch (error) {
             if (error instanceof AxiosError && error.response) {
                 setStatusMessage({ type: 'error', text: error.response.data.message || 'Error al iniciar sesión.' });
+            } else if (error instanceof Error) {
+                setStatusMessage({ type: 'error', text: error.message });
             } else {
                 setStatusMessage({ type: 'error', text: 'Error de conexión.' });
             }

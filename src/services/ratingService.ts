@@ -1,5 +1,5 @@
 import axiosClient from '../api/axiosClient';
-import type { UserRatingSummaryResponse } from '../types/rating';
+import type { RatingResponse, UserRatingSummaryResponse } from '../types/rating';
 
 export interface CreateRatingPayload {
     rateeId: string;
@@ -15,5 +15,10 @@ export async function submitRideRating(rideId: string, payload: CreateRatingPayl
 
 export async function getUserRatings(userId: string): Promise<UserRatingSummaryResponse> {
     const response = await axiosClient.get<UserRatingSummaryResponse>(`/Users/${userId}/ratings`);
+    return response.data;
+}
+
+export async function getRideRatings(rideId: string): Promise<RatingResponse[]> {
+    const response = await axiosClient.get<RatingResponse[]>(`/Rides/${rideId}/ratings`);
     return response.data;
 }

@@ -9,9 +9,11 @@ import ResetPasswordForm from './components/auth/ResetPasswordForm';
 import SearchRidesView from './pages/SearchRidesView';
 import JoinRideView from './pages/JoinRideView';
 import ManageRideView from './pages/ManageRideView';
+import RideDetailView from './pages/RideDetailView';
 import RideRatingView from './pages/RideRatingView';
 import DashboardView from './pages/dashBoardView';
 import AdminDashboardView from './pages/adminDashboardView';
+import AdminReportDetailView from './pages/AdminReportDetailView';
 import { getCurrentUserRole } from './utils/auth';
 
 // --- Importaciones del Sprint 6 ---
@@ -87,6 +89,16 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/admin/reports/:reportId"
+          element={
+            <ProtectedRoute>
+              <AdminRoute>
+                <AdminReportDetailView />
+              </AdminRoute>
+            </ProtectedRoute>
+          }
+        />
 
         {/* --- Rutas del Módulo de Viajes (Sprint 6) --- */}
         <Route
@@ -102,6 +114,15 @@ export default function App() {
           element={
             <ProtectedRoute>
               <JoinRideView />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/rides/:rideId/detail"
+          element={
+            <ProtectedRoute>
+              <RideDetailView />
             </ProtectedRoute>
           }
         />

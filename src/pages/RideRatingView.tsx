@@ -1,8 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { submitRideRating } from '../services/ratingService';
+import axios from 'axios';
+import { getRideRatings, submitRideRating } from '../services/ratingService';
 import type { Ride } from '../types/rides';
 import type { RatingNavigationState } from '../types/rating';
+import { getCurrentUserId } from '../utils/auth';
 import ReportUserModal from '../components/ReportUserModal';
 import AppSidebar from '../components/layout/AppSidebar';
 import './RideRatingView.css';
@@ -19,6 +21,7 @@ const RideRatingView: React.FC = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const ride = location.state?.ride as Ride | undefined;
     const rateeState = location.state as RatingNavigationState | undefined;
+    const currentUserId = getCurrentUserId();
 
     const rateeId = rateeState?.rateeId;
     const rateeName = rateeState?.rateeName ?? 'Usuario';
@@ -56,20 +59,38 @@ const RideRatingView: React.FC = () => {
         try {
             setSubmitError(null);
             setIsSubmitting(true);
+
+            // Verificación defensiva — protege contra acceso directo por URL
+            const currentRatings = await getRideRatings(id);
+            const alreadyRated = currentRatings.some(
+                r => r.raterId === currentUserId && r.rateeId === rateeId
+            );
+
+            if (alreadyRated) {
+                setSubmitError('Ya enviaste una calificación para este usuario en este viaje.');
+                return;
+            }
+
             await submitRideRating(id, {
                 rateeId,
                 score: rating,
                 comment: review.trim() || undefined,
             });
 
-            navigate('/dashboard');
+            navigate('/dashboard', {
+                state: { successMessage: 'Calificación enviada correctamente' },
+            });
         } catch (error) {
+            if (axios.isAxiosError(error) && error.response?.status === 409) {
+                setSubmitError('Esta calificación ya fue enviada anteriormente.');
+                return;
+            }
             console.error('Error al enviar la calificación', error);
             setSubmitError('Hubo un problema al guardar tu calificación.');
         } finally {
             setIsSubmitting(false);
         }
-    }, [id, navigate, rateeId, rating, review]);
+    }, [id, navigate, rateeId, rating, review, currentUserId]);
 
     const handleReport = useCallback(() => {
         setIsReportOpen(true);

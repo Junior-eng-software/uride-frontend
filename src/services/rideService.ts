@@ -9,11 +9,6 @@ export async function createRide(data: CreateRidePayload): Promise<Ride> {
   return response.data;
 }
 
-export async function getRideById(id: string): Promise<Ride> {
-  const response = await axiosClient.get<Ride>(`/Rides/${id}`);
-  return response.data;
-}
-
 export async function searchRides(filters?: RideSearchFilters): Promise<Ride[]> {
   // Eliminamos el '/api' inicial
   const response = await axiosClient.get<Ride[]>('/rides/search', { 
@@ -24,6 +19,11 @@ export async function searchRides(filters?: RideSearchFilters): Promise<Ride[]> 
 
 export async function getMyRides(): Promise<RideResponse[]> {
   const response = await axiosClient.get<RideResponse[]>('/Rides/me');
+  return response.data;
+}
+
+export async function getRideById(rideId: string): Promise<Ride> {
+  const response = await axiosClient.get<Ride>(`/Rides/${rideId}`);
   return response.data;
 }
 

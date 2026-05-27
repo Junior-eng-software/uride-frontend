@@ -1,81 +1,79 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { searchRides } from '../services/rideService';
-import type { Ride, RideSearchFilters } from '../types/rides';
-import { localDatetimeToIso } from '../utils/dateUtils';
-import './SearchRidesView.css';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppSidebar from '../components/layout/AppSidebar';
+import NotificationBell from '../components/notifications/NotificationBell';
+import { searchRides } from '../services/rideService';
+import type { Ride, RideSearchFilters } from '../types/rides';
+import './SearchRidesView.css';
 
 const SearchRidesView: React.FC = () => {
-    // 1. Estados de la Interfaz
+    const navigate = useNavigate();
     const [sidebarOpen, setSidebarOpen] = useState(false);
-
-    // 2. Estados Lógicos (Backend)
     const [rides, setRides] = useState<Ride[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [filters, setFilters] = useState<RideSearchFilters>({
+        availableOnly: true,
+        page: 1,
+        pageSize: 10,
+    });
+    const [selectedDate, setSelectedDate] = useState('');
+    const [hasMore, setHasMore] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // 3. Estados del Formulario de Búsqueda
-    const [originFilter, setOriginFilter] = useState('');
-    const [destinationFilter, setDestinationFilter] = useState('');
-    const [dateFilter, setDateFilter] = useState('');
-    const navigate = useNavigate();
-    // 4. Función Principal de Búsqueda
-    const fetchRides = useCallback(async () => {
-        setIsLoading(true);
-        setError(null);
-        try {
-            const searchParams: RideSearchFilters = {
-                originZone: originFilter || undefined,
-                destinationZone: destinationFilter || undefined,
-                availableOnly: true,
-            };
-
-            if (dateFilter) {
-                searchParams.from = localDatetimeToIso(`${dateFilter}T00:00:00`);
-                searchParams.to = localDatetimeToIso(`${dateFilter}T23:59:59`);
-            }
-
-            const rawData = await searchRides(searchParams);
-            setRides(rawData);
-
-        } catch (err) {
-            console.error(err);
-            setError('Error al cargar los viajes disponibles desde el servidor.');
-        } finally {
-            setIsLoading(false);
-        }
-    }, [originFilter, destinationFilter, dateFilter]);
-
-    // Ejecutar búsqueda automática al cargar la pantalla
-    const initialFetchDoneRef = useRef(false);
     useEffect(() => {
-        if (initialFetchDoneRef.current) {
+        const fetchRides = async () => {
+            setIsLoading(true);
+            setError(null);
+
+            try {
+                const data = await searchRides(filters);
+                setRides(prev =>
+                    filters.page === 1 ? data : [...prev, ...data]
+                );
+                setHasMore(data.length === filters.pageSize);
+            } catch {
+                setError('Error al cargar viajes. Intenta de nuevo.');
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        void fetchRides();
+    }, [filters]);
+
+    const handleFilterChange = (
+        key: keyof RideSearchFilters,
+        value: string | undefined
+    ) => {
+        setFilters(prev => ({ ...prev, [key]: value, page: 1 }));
+    };
+
+    const handleDateChange = (dateValue: string) => {
+        setSelectedDate(dateValue);
+        if (!dateValue) {
+            setFilters(prev => ({ ...prev, from: undefined, to: undefined, page: 1 }));
             return;
         }
 
-        initialFetchDoneRef.current = true;
-        const timer = setTimeout(() => {
-            void fetchRides();
-        }, 0);
+        const from = new Date(`${dateValue}T00:00:00`).toISOString();
+        const to = new Date(`${dateValue}T23:59:59`).toISOString();
+        setFilters(prev => ({ ...prev, from, to, page: 1 }));
+    };
 
-        return () => clearTimeout(timer);
-    }, [fetchRides]);
-
-    // Manejar el botón de Buscar
-    const handleSearch = (e: React.FormEvent) => {
-        e.preventDefault();
-        fetchRides();
+    const clearFilters = () => {
+        setSelectedDate('');
+        setFilters({ availableOnly: true, page: 1, pageSize: 10 });
     };
 
     return (
         <div className="u-ride-dashboard">
-            {/* Sidebar Mobile Overlay */}
-            <div className={`sidebar-overlay ${sidebarOpen ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}></div>
+            <div
+                className={`sidebar-overlay ${sidebarOpen ? 'active' : ''}`}
+                onClick={() => setSidebarOpen(false)}
+            ></div>
 
             <AppSidebar className={sidebarOpen ? 'open' : ''} />
 
-            {/* Main Content */}
             <main className="main-content">
                 <header className="top-header">
                     <div className="menu-toggle" onClick={() => setSidebarOpen(true)}>
@@ -83,9 +81,7 @@ const SearchRidesView: React.FC = () => {
                     </div>
                     <div className="header-spacer" aria-hidden="true"></div>
                     <div className="header-actions">
-                        <div className="notification-icon">
-                            <i className="ti ti-bell"></i>
-                        </div>
+                        <NotificationBell />
                         <div className="user-profile">
                             <div className="user-text">
                                 <span className="user-name">Estudiante UTA</span>
@@ -97,39 +93,39 @@ const SearchRidesView: React.FC = () => {
                 </header>
 
                 <div className="content-padding">
-                    {/* Hero Banner (Ahora es un form funcional) */}
                     <section className="hero-banner">
-                        <h2>¿A DÓNDE VAS HOY?</h2>
-                        <form className="search-form" onSubmit={handleSearch}>
+                        <h2>¿A DONDE VAS HOY?</h2>
+                        <div className="search-form">
                             <div className="input-field">
                                 <label>Origen</label>
                                 <input
                                     type="text"
-                                    placeholder="Ej. Campus Huachi"
-                                    value={originFilter}
-                                    onChange={(e) => setOriginFilter(e.target.value)}
+                                    placeholder="¿Desde dónde? Ej: El Batán"
+                                    value={filters.originZone ?? ''}
+                                    onChange={e => handleFilterChange('originZone', e.target.value || undefined)}
                                 />
                             </div>
                             <div className="input-field">
                                 <label>Destino</label>
                                 <input
                                     type="text"
-                                    placeholder="Ej. Zona Norte"
-                                    value={destinationFilter}
-                                    onChange={(e) => setDestinationFilter(e.target.value)}
+                                    placeholder="¿Hacia dónde? Ej: UTA"
+                                    value={filters.destinationZone ?? ''}
+                                    onChange={e => handleFilterChange('destinationZone', e.target.value || undefined)}
                                 />
                             </div>
                             <div className="input-field">
                                 <label>Fecha</label>
-                                {/* Cambiado a type="date" para consistencia con el ISO 8601 */}
                                 <input
                                     type="date"
-                                    value={dateFilter}
-                                    onChange={(e) => setDateFilter(e.target.value)}
+                                    value={selectedDate}
+                                    onChange={e => handleDateChange(e.target.value)}
                                 />
                             </div>
-                            <button type="submit" className="btn-search">Buscar Viajes</button>
-                        </form>
+                            <button type="button" className="btn-search" onClick={clearFilters}>
+                                Limpiar filtros
+                            </button>
+                        </div>
                     </section>
 
                     <div className="dashboard-layout">
@@ -138,15 +134,14 @@ const SearchRidesView: React.FC = () => {
                                 Viajes Disponibles Ahora {rides.length > 0 ? `(${rides.length})` : ''}
                             </h3>
 
-                            {isLoading && <p>Cargando rutas disponibles desde el servidor...</p>}
                             {error && <p style={{ color: '#ef4444' }}>{error}</p>}
-                            {!isLoading && !error && rides.length === 0 && (
-                                <p style={{ color: '#64748b', padding: '2rem 0' }}>No se encontraron viajes con estos criterios de búsqueda.</p>
+
+                            {!isLoading && rides.length === 0 && (
+                                <p>No se encontraron viajes con estos filtros.</p>
                             )}
 
                             <div className="rides-grid">
-                                {/* Mapeo de datos REALES de la base de datos */}
-                                {!isLoading && rides.map(ride => {
+                                {rides.map(ride => {
                                     const formattedDate = new Date(ride.departureAt).toLocaleString('es-EC', {
                                         dateStyle: 'short',
                                         timeStyle: 'short',
@@ -156,8 +151,17 @@ const SearchRidesView: React.FC = () => {
                                         <div key={ride.id} className="ride-card">
                                             <div className="card-header">
                                                 <div className="driver-info">
-                                                    {/* Inicial del conductor como avatar */}
-                                                    <div className="driver-avatar" style={{ backgroundColor: '#1e293b', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                                                    <div
+                                                        className="driver-avatar"
+                                                        style={{
+                                                            backgroundColor: '#1e293b',
+                                                            color: 'white',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            fontWeight: 'bold',
+                                                        }}
+                                                    >
                                                         {ride.driverName.charAt(0).toUpperCase()}
                                                     </div>
                                                     <div className="driver-meta">
@@ -167,7 +171,7 @@ const SearchRidesView: React.FC = () => {
                                                 </div>
                                                 <div className="rating-tag">
                                                     <i className="ti ti-star-filled"></i>
-                                                    <span>5.0</span> {/* Dato hardcodeado hasta el módulo de ratings */}
+                                                    <span>5.0</span>
                                                 </div>
                                             </div>
 
@@ -196,7 +200,6 @@ const SearchRidesView: React.FC = () => {
                                                 </div>
                                                 <button
                                                     className="btn-view"
-                                                    // [CAMBIO CLAVE] Agregamos el objeto `ride` al estado de la navegación
                                                     onClick={() => navigate(`/rides/${ride.id}/join`, { state: { ride } })}
                                                 >
                                                     Ver Viaje
@@ -206,6 +209,22 @@ const SearchRidesView: React.FC = () => {
                                     );
                                 })}
                             </div>
+
+                            {hasMore && !isLoading && (
+                                <button
+                                    type="button"
+                                    className="btn-search"
+                                    onClick={() => setFilters(prev => ({ ...prev, page: prev.page! + 1 }))}
+                                >
+                                    Cargar más viajes
+                                </button>
+                            )}
+
+                            {isLoading && <p>Cargando...</p>}
+
+                            {!hasMore && rides.length > 0 && (
+                                <p className="text-sm text-gray-500">No hay más viajes disponibles.</p>
+                            )}
                         </section>
                     </div>
                 </div>

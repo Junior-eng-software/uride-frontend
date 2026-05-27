@@ -1,6 +1,4 @@
-function decodeJwtPayload(): Record<string, unknown> | null {
-    const token = localStorage.getItem('accessToken');
-
+function decodeJwtPayloadFromToken(token: string | null): Record<string, unknown> | null {
     if (!token) {
         return null;
     }
@@ -22,7 +20,11 @@ function decodeJwtPayload(): Record<string, unknown> | null {
         console.error('Error al decodificar el token JWT:', error);
         return null;
     }
-}   
+}
+
+function decodeJwtPayload(): Record<string, unknown> | null {
+    return decodeJwtPayloadFromToken(localStorage.getItem('accessToken'));
+}
 
 /**
  * Extrae y decodifica el ID del usuario directamente del JWT almacenado en el navegador.
@@ -45,5 +47,14 @@ export function getCurrentUserRole(): string | null {
     const payload = decodeJwtPayload();
 
     return payload?.['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] as string
+        ?? payload?.role as string
+        ?? null;
+}
+
+export function getRoleFromToken(token: string): string | null {
+    const payload = decodeJwtPayloadFromToken(token);
+
+    return payload?.['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] as string
+        ?? payload?.role as string
         ?? null;
 }

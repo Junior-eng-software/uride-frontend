@@ -93,10 +93,6 @@ export default function EditProfileForm() {
         }
     };
 
-    const handleMessagesClick = () => {
-        console.log('Próximamente');
-    };
-
     // ── Nombre en tiempo real para el avatar ───────────────────────────
     const watchedName = watch('fullName') || loadedName;
 

@@ -360,6 +360,19 @@ body {
   outline-offset: 3px;
 }
 
+.rating-submitted-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 0.75rem;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #16a34a;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border: 1px solid rgba(22, 163, 74, 0.18);
+}
+
 /* Confirmed Column */
 .confirmed-card {
   background: white;

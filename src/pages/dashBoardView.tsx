@@ -1,21 +1,39 @@
 // DashboardView.tsx
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { getUserMe, type CurrentUser } from '../services/userService';
 import { getMyRides } from '../services/rideService';
+import { getRideRatings } from '../services/ratingService';
 import type { Ride } from '../types/rides';
-import type { RatingNavigationState } from '../types/rating';
 import { getCurrentUserId } from '../utils/auth';
 import AppSidebar from '../components/layout/AppSidebar';
-import './DashboardView.css';
+import NotificationBell from '../components/notifications/NotificationBell';
+import './dashBoardView.css';
+
+const getStatusLabel = (status: string): string => {
+    const labels: Record<string, string> = {
+        Pending: 'Pendiente',
+        Active: 'Activo',
+        Published: 'Activo',
+        Completed: 'Completado',
+        Cancelled: 'Cancelado',
+    };
+
+    return labels[status] ?? status;
+};
 
 const DashboardView: React.FC = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
     const [rides, setRides] = useState<Ride[]>([]);
+    const [ratedRideIds, setRatedRideIds] = useState<Set<string>>(new Set());
+    const [successMessage, setSuccessMessage] = useState<string | null>(
+        (location.state as { successMessage?: string } | null)?.successMessage ?? null
+    );
 
     useEffect(() => {
         const fetchUserAndRatings = async () => {
@@ -43,6 +61,60 @@ const DashboardView: React.FC = () => {
         return () => window.clearTimeout(timer);
     }, []);
 
+    useEffect(() => {
+        const loadRatedRides = async () => {
+            if (!rides.length) {
+                setRatedRideIds(new Set());
+                return;
+            }
+
+            const currentUserId = getCurrentUserId();
+
+            if (!currentUserId) {
+                setRatedRideIds(new Set());
+                return;
+            }
+
+            const recentRides = rides.filter(ride => ride.status === 'Completed');
+
+            if (!recentRides.length) {
+                setRatedRideIds(new Set());
+                return;
+            }
+
+            const ratingsResults = await Promise.all(
+                recentRides.map(ride => getRideRatings(ride.id))
+            );
+
+            const ratedIds = new Set<string>();
+
+            recentRides.forEach((ride, index) => {
+                const hasRatedDriver = ratingsResults[index].some(
+                    rating => rating.raterId === currentUserId && rating.rateeId === ride.driverId
+                );
+
+                if (hasRatedDriver) {
+                    ratedIds.add(ride.id);
+                }
+            });
+
+            setRatedRideIds(ratedIds);
+        };
+
+        void loadRatedRides();
+    }, [rides]);
+
+    useEffect(() => {
+        if (!successMessage) return;
+
+        const timer = window.setTimeout(() => {
+            setSuccessMessage(null);
+            navigate(location.pathname, { replace: true });
+        }, 3500);
+
+        return () => window.clearTimeout(timer);
+    }, [successMessage, navigate, location.pathname]);
+
     const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
     const handleQuickAction = (path: string) => {
@@ -51,17 +123,6 @@ const DashboardView: React.FC = () => {
 
     const handleManageRide = (ride: Ride) => {
         navigate(`/rides/${ride.id}/manage`, { state: { ride } });
-    };
-
-    const handleRateDriver = (ride: Ride) => {
-        navigate(`/rides/${ride.id}/rating`, {
-            state: {
-                ride,
-                rateeId: ride.driverId ?? '',
-                rateeName: ride.driverName ?? '',
-                rateeRole: 'driver',
-            } satisfies RatingNavigationState,
-        });
     };
 
     const activeRides = rides.filter(ride => ride.status !== 'Completed');
@@ -97,6 +158,30 @@ const DashboardView: React.FC = () => {
 
     return (
         <div className="u-ride-layout">
+            {successMessage && (
+                <div
+                    role="alert"
+                    style={{
+                        position: 'fixed',
+                        top: '1.25rem',
+                        right: '1.25rem',
+                        zIndex: 1000,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        padding: '0.75rem 1.25rem',
+                        borderRadius: '0.5rem',
+                        background: '#ecfdf5',
+                        color: '#15803d',
+                        border: '1px solid rgba(22, 163, 74, 0.2)',
+                        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)',
+                        fontSize: '0.9rem',
+                        fontWeight: 600,
+                    }}
+                >
+                    <span>{successMessage}</span>
+                </div>
+            )}
             {/* Sidebar Overlay */}
             {sidebarOpen && (
                 <div className="sidebar-overlay" onClick={toggleSidebar}></div>
@@ -114,10 +199,7 @@ const DashboardView: React.FC = () => {
                         <h1>Dashboard</h1>
                     </div>
                     <div className="header-right">
-                        <div className="notification-bell">
-                            <i className="ti ti-bell"></i>
-                            <span className="badge-dot"></span>
-                        </div>
+                        <NotificationBell />
                     </div>
                 </header>
 
@@ -205,56 +287,65 @@ const DashboardView: React.FC = () => {
                     </section>
 
                     {/* Completed Rides */}
-                    <section className="dashboard-section">
-                        <div className="section-header">
-                            <h2 className="section-title">Viajes Recientes</h2>
-                            <button className="btn-text">Ver todo</button>
+                    <section className="recent-rides-section">
+                        <div className="recent-rides-header">
+                            <div>
+                                <span className="section-eyebrow">Historial reciente</span>
+                                <h2>Viajes recientes</h2>
+                            </div>
                         </div>
                         {completedRides.length === 0 ? (
-                            <div className="ride-card completed-card">
-                                <p>No tienes viajes completados todavía.</p>
+                            <div className="empty-recent-rides">
+                                <h3>No tienes viajes recientes</h3>
+                                <p>Cuando completes o participes en un viaje, aparecerá aquí.</p>
                             </div>
                         ) : (
-                            completedRides.map((ride) => {
-                                const isPassengerRide = ride.driverId !== authenticatedUserId;
+                            <div className="recent-rides-grid">
+                                {completedRides.map((ride) => {
+                                    const isRatingSent = ratedRideIds.has(ride.id);
 
-                                return (
-                                    <div key={ride.id} className="ride-card completed-card">
-                                        <div className="ride-main">
-                                            <div className="status-icon completed">
-                                                <i className="ti ti-circle-check"></i>
+                                    return (
+                                        <article key={ride.id} className="recent-ride-card">
+                                            <div className="ride-card-main">
+                                                <div className="ride-route">
+                                                    <span>{ride.originZone}</span>
+                                                    <span className="route-arrow">→</span>
+                                                    <span>{ride.destinationZone}</span>
+                                                </div>
+
+                                                <p className="ride-date">
+                                                    {new Date(ride.departureAt).toLocaleString('es-EC', {
+                                                        dateStyle: 'short',
+                                                        timeStyle: 'short',
+                                                    })}
+                                                </p>
                                             </div>
-                                            <div className="ride-info">
-                                                <span className="ride-day">{new Date(ride.departureAt).toLocaleString('es-EC', {
-                                                    dateStyle: 'short',
-                                                    timeStyle: 'short',
-                                                })}</span>
-                                                <span className="status-text">Completado</span>
-                                            </div>
-                                            <div className="ride-path-summary">
-                                                <span className="zone">{ride.originZone}</span>
-                                                <i className="ti ti-arrow-narrow-right"></i>
-                                                <span className="zone">{ride.destinationZone}</span>
-                                            </div>
-                                            {isPassengerRide ? (
+
+                                            <div className="ride-card-footer">
+                                                <div className="ride-badges">
+                                                    <span className={`status-pill ${ride.status.toLowerCase()}`}>
+                                                        {getStatusLabel(ride.status)}
+                                                    </span>
+
+                                                    {isRatingSent && (
+                                                        <span className="rating-pill">Calificación enviada</span>
+                                                    )}
+                                                </div>
+
                                                 <button
-                                                    className="btn-secondary"
-                                                    onClick={() => handleRateDriver(ride)}
-                                                >
-                                                    Calificar conductor
-                                                </button>
-                                            ) : (
-                                                <button
-                                                    className="btn-secondary"
-                                                    onClick={() => handleManageRide(ride)}
+                                                    type="button"
+                                                    className="btn-view-ride"
+                                                    onClick={() => navigate(`/rides/${ride.id}/detail`, {
+                                                        state: { ride },
+                                                    })}
                                                 >
                                                     Ver viaje
                                                 </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })
+                                            </div>
+                                        </article>
+                                    );
+                                })}
+                            </div>
                         )}
                     </section>
                 </div>
