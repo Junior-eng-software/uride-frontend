@@ -1,4 +1,8 @@
-export type AppNotificationType = "Warning" | "Suspension" | "ReportDismissed";
+export type AppNotificationType =
+  | "Warning"
+  | "Suspension"
+  | "ReportDismissed"
+  | "RideCancelled";
 
 export interface AppNotification {
   id: string;

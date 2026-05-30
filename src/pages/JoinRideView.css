@@ -75,10 +75,17 @@ body {
 }
 
 .avatar {
-  width: 35px;
-  height: 35px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
-  background: #cbd5e1;
+  background: #0f172a;
+  color: #ffffff;
+  border: 2px solid #e2e8f0;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
 }
 
 .view-container {

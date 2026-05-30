@@ -3,8 +3,22 @@ import { useNavigate } from 'react-router-dom';
 import AppSidebar from '../components/layout/AppSidebar';
 import NotificationBell from '../components/notifications/NotificationBell';
 import { searchRides } from '../services/rideService';
+import { getUserMe, type CurrentUser } from '../services/userService';
 import type { Ride, RideSearchFilters } from '../types/rides';
 import './SearchRidesView.css';
+
+const getInitials = (fullName?: string | null): string => {
+    if (!fullName) return 'U';
+
+    const parts = fullName.trim().split(/\s+/).filter(Boolean);
+
+    if (parts.length === 0) return 'U';
+
+    const first = parts[0]?.[0] ?? '';
+    const second = parts.length > 1 ? parts[1]?.[0] ?? '' : '';
+
+    return `${first}${second}`.toUpperCase();
+};
 
 const SearchRidesView: React.FC = () => {
     const navigate = useNavigate();
@@ -16,9 +30,11 @@ const SearchRidesView: React.FC = () => {
         pageSize: 10,
     });
     const [selectedDate, setSelectedDate] = useState('');
+    const [selectedTime, setSelectedTime] = useState('');
     const [hasMore, setHasMore] = useState(true);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
     useEffect(() => {
         const fetchRides = async () => {
@@ -41,6 +57,28 @@ const SearchRidesView: React.FC = () => {
         void fetchRides();
     }, [filters]);
 
+    useEffect(() => {
+        let isMounted = true;
+
+        const loadCurrentUser = async () => {
+            try {
+                const user = await getUserMe();
+
+                if (isMounted) {
+                    setCurrentUser(user);
+                }
+            } catch (error) {
+                console.error('Error cargando usuario actual:', error);
+            }
+        };
+
+        void loadCurrentUser();
+
+        return () => {
+            isMounted = false;
+        };
+    }, []);
+
     const handleFilterChange = (
         key: keyof RideSearchFilters,
         value: string | undefined
@@ -60,8 +98,18 @@ const SearchRidesView: React.FC = () => {
         setFilters(prev => ({ ...prev, from, to, page: 1 }));
     };
 
+    const handleTimeChange = (timeValue: string) => {
+        setSelectedTime(timeValue);
+        setFilters(prev => ({
+            ...prev,
+            departureTime: timeValue !== '' ? timeValue : undefined,
+            page: 1
+        }));
+    };
+
     const clearFilters = () => {
         setSelectedDate('');
+        setSelectedTime('');
         setFilters({ availableOnly: true, page: 1, pageSize: 10 });
     };
 
@@ -84,10 +132,12 @@ const SearchRidesView: React.FC = () => {
                         <NotificationBell />
                         <div className="user-profile">
                             <div className="user-text">
-                                <span className="user-name">Estudiante UTA</span>
+                                <span className="user-name">{currentUser?.fullName ?? 'Usuario'}</span>
                                 <span className="user-status">Modo Pasajero</span>
                             </div>
-                            <div className="avatar"></div>
+                            <div className="avatar" aria-label="Iniciales del usuario">
+                                {getInitials(currentUser?.fullName)}
+                            </div>
                         </div>
                     </div>
                 </header>
@@ -122,6 +172,14 @@ const SearchRidesView: React.FC = () => {
                                     onChange={e => handleDateChange(e.target.value)}
                                 />
                             </div>
+                            <div className="input-field">
+                                <label>HORA</label>
+                                <input
+                                    type="time"
+                                    value={selectedTime}
+                                    onChange={e => handleTimeChange(e.target.value)}
+                                />
+                            </div>
                             <button type="button" className="btn-search" onClick={clearFilters}>
                                 Limpiar filtros
                             </button>
@@ -146,6 +204,9 @@ const SearchRidesView: React.FC = () => {
                                         dateStyle: 'short',
                                         timeStyle: 'short',
                                     });
+
+                                    const formatContribution = (value: number) =>
+                                        value === 0 ? "Gratuito" : `$${value.toFixed(2)}`;
 
                                     return (
                                         <div key={ride.id} className="ride-card">
@@ -184,6 +245,12 @@ const SearchRidesView: React.FC = () => {
                                                 <div className="route-step">
                                                     <i className="ti ti-map-pin destination-icon"></i>
                                                     <span>{ride.destinationZone}</span>
+                                                </div>
+                                                <div className="route-step" style={{ marginTop: '0.5rem', color: '#0ea5e9', fontWeight: 'bold' }}>
+                                                    <i className="ti ti-coin"></i>
+                                                    <span style={{ marginLeft: '4px' }}>
+                                                        Aporte sugerido: {formatContribution(ride.estimatedCostPerPassenger)}
+                                                    </span>
                                                 </div>
                                             </div>
 

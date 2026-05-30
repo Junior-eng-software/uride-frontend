@@ -4,12 +4,12 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { api } from '../../api/axiosClient';
-import { AxiosError } from 'axios';
+import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
 import './ResetPasswordForm.css'; // <-- Importamos los estilos
 
 const resetSchema = z.object({
-    token: z.string().min(10, 'El token no es válido'),
+    token: z.string().trim().regex(/^\d{6}$/, 'El código debe tener 6 dígitos.'),
     password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres'),
     confirmPassword: z.string()
 }).refine((data) => data.password === data.confirmPassword, {
@@ -19,12 +19,18 @@ const resetSchema = z.object({
 
 type ResetFormData = z.infer<typeof resetSchema>;
 
+interface ResetPasswordErrorResponse {
+    message?: string;
+    detail?: string;
+}
+
 export default function ResetPasswordForm() {
     const navigate = useNavigate();
     const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [token, setToken] = useState('');
 
-    const { register, handleSubmit, formState: { errors } } = useForm<ResetFormData>({
+    const { register, handleSubmit, setValue, formState: { errors } } = useForm<ResetFormData>({
         resolver: zodResolver(resetSchema)
     });
 
@@ -33,8 +39,10 @@ export default function ResetPasswordForm() {
         setStatusMessage(null);
 
         try {
+            const normalizedToken = data.token.trim();
+
             const response = await api.post('/auth/reset-password', {
-                token: data.token,
+                token: normalizedToken,
                 newPassword: data.password
             });
 
@@ -43,8 +51,13 @@ export default function ResetPasswordForm() {
                 setTimeout(() => navigate('/login'), 3000);
             }
         } catch (error) {
-            if (error instanceof AxiosError && error.response) {
-                setStatusMessage({ type: 'error', text: error.response.data.message || 'Error al restablecer.' });
+            if (axios.isAxiosError<ResetPasswordErrorResponse | string>(error) && error.response) {
+                const backendMessage =
+                    typeof error.response.data === 'string'
+                        ? error.response.data
+                        : error.response.data.message ?? error.response.data.detail;
+
+                setStatusMessage({ type: 'error', text: backendMessage || 'Error al restablecer.' });
             } else {
                 setStatusMessage({ type: 'error', text: 'Error de conexión con el servidor.' });
             }
@@ -75,7 +88,7 @@ export default function ResetPasswordForm() {
                 <div className="reset-card">
                     <div className="reset-card-header">
                         <h1 className="reset-title">Crear Nueva Contraseña</h1>
-                        <p className="reset-subtitle">Ingresa el token de recuperación de tu correo y define tu nueva contraseña.</p>
+                        <p className="reset-subtitle">Ingresa el código de 6 dígitos enviado a tu correo y define tu nueva contraseña.</p>
                     </div>
 
                     {statusMessage && (
@@ -87,16 +100,24 @@ export default function ResetPasswordForm() {
 
                     <form onSubmit={handleSubmit(onSubmit)} className="reset-form" noValidate>
 
-                        {/* Token */}
+                        {/* Código de recuperación */}
                         <div className="reset-field-group">
-                            <label className="reset-field-label">Token de Seguridad</label>
+                            <label className="reset-field-label">Código de recuperación</label>
                             <div className={`reset-field-wrapper ${errors.token ? 'reset-field-wrapper--error' : ''}`}>
                                 <i className="ti ti-key reset-field-icon" aria-hidden="true"></i>
                                 <input
                                     type="text"
-                                    placeholder="Pega el token aquí..."
+                                    inputMode="numeric"
+                                    maxLength={6}
+                                    placeholder="Ingresa el código de 6 dígitos"
                                     className="reset-field-input"
+                                    value={token}
                                     {...register('token')}
+                                    onChange={(event) => {
+                                        const onlyDigits = event.target.value.replace(/\D/g, '').slice(0, 6);
+                                        setToken(onlyDigits);
+                                        setValue('token', onlyDigits, { shouldValidate: true });
+                                    }}
                                 />
                             </div>
                             {errors.token && (

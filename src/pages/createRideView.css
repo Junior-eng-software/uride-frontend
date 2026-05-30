@@ -1,4 +1,4 @@
-/* CreateRideView.css */
+/* createRideView.css */
 :root {
   --primary-green: #22c55e;
   --sidebar-bg: #1e293b;
@@ -9,10 +9,12 @@
   --card-bg: #ffffff;
 }
 
+/* Layout base */
 .u-ride-container {
   display: grid;
-  grid-template-columns: 280px 1fr;
+  grid-template-columns: 280px minmax(0, 1fr);
   min-height: 100vh;
+  width: 100%;
   font-family: 'Inter', sans-serif;
   background-color: var(--bg-gray);
 }
@@ -21,28 +23,72 @@
 .main-content {
   display: flex;
   flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  background-color: var(--bg-gray);
 }
 
+/* Header */
 .header {
-  height: 70px;
-  background: white;
+  min-height: 78px;
+  background: #ffffff;
   border-bottom: 1px solid var(--border-color);
-  padding: 0 2rem;
+  padding: 0;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+}
+
+.header-inner {
+  width: 100%;
+  min-height: 78px;
+  padding: 0 2rem;
+
+  /*
+    Grid profesional:
+    - columna izquierda flexible
+    - columna central igual al ancho del formulario
+    - columna derecha flexible
+    Así el título se alinea con la tarjeta y el modo conductor queda a la derecha.
+  */
+  display: grid;
+  grid-template-columns: minmax(1rem, 1fr) minmax(0, 760px) minmax(1rem, 1fr);
+  align-items: center;
+  column-gap: 1.5rem;
+  box-sizing: border-box;
+}
+
+.header-copy {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
 }
 
 .header h1 {
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   color: var(--text-main);
-  font-weight: 600;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.header-copy p {
+  margin: 0.25rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  line-height: 1.35;
 }
 
 .user-profile {
+  grid-column: 3;
+  justify-self: end;
+
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  flex-shrink: 0;
 }
 
 .user-info {
@@ -53,54 +99,63 @@
   display: block;
   font-weight: 600;
   font-size: 0.875rem;
+  color: var(--text-main);
 }
 
 .user-role {
-  font-size: 0.75rem;
+  display: block;
+  font-size: 0.8rem;
   color: var(--text-muted);
 }
 
 .avatar {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   background: #cbd5e1;
+  border: 2px solid #e2e8f0;
 }
 
+/* Área del formulario */
 .view-layout {
-  display: grid;
-  grid-template-columns: 1.5fr 1fr;
-  gap: 2rem;
-  padding: 2rem;
-  height: calc(100vh - 70px);
-}
+  width: 100%;
+  min-height: calc(100vh - 78px);
+  padding: 2rem 2rem 3rem;
+  box-sizing: border-box;
 
-/* Map Placeholder */
-.map-placeholder {
-  background-color: #e2e8f0;
-  border-radius: 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
-  font-weight: 500;
-  border: 2px dashed #cbd5e1;
+  /*
+    Mismo patrón que el header:
+    la columna central controla la posición real del formulario.
+  */
+  display: grid;
+  grid-template-columns: minmax(1rem, 1fr) minmax(0, 760px) minmax(1rem, 1fr);
+  align-items: start;
 }
 
 /* Form Panel */
 .form-card {
-  background: white;
-  border-radius: 1rem;
-  padding: 2rem;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  grid-column: 2;
+
+  width: 100%;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 18px;
+  padding: 2rem 2.25rem;
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.08);
+
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.15rem;
+  box-sizing: border-box;
 }
 
 .form-card h2 {
-  font-size: 1.125rem;
-  margin-bottom: 0.5rem;
+  color: var(--text-main);
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
 }
 
 .input-group {
@@ -110,7 +165,7 @@
 }
 
 .input-group label {
-  font-size: 0.875rem;
+  font-size: 0.9rem;
   font-weight: 500;
   color: var(--text-muted);
 }
@@ -125,65 +180,222 @@
   top: 50%;
   transform: translateY(-50%);
   color: var(--text-muted);
+  font-size: 0.95rem;
 }
 
 .input-with-icon input {
   width: 100%;
+  min-height: 46px;
   padding: 0.75rem 1rem 0.75rem 2.75rem;
   border: 1px solid var(--border-color);
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
+  border-radius: 0.6rem;
+  font-size: 0.9rem;
+  color: var(--text-main);
+  background: #ffffff;
+  box-sizing: border-box;
+}
+
+.input-with-icon input:focus {
+  outline: none;
+  border-color: var(--primary-green);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.14);
 }
 
 .date-time-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 1rem;
 }
 
+.field-hint {
+  font-size: 0.75rem;
+  color: #666;
+  margin-top: 4px;
+  display: block;
+}
+
 .submit-btn {
-  margin-top: auto;
+  min-height: 50px;
+  margin-top: 1rem;
   background-color: var(--primary-green);
-  color: white;
+  color: #ffffff;
   border: none;
   padding: 1rem;
-  border-radius: 0.5rem;
-  font-weight: 600;
+  border-radius: 0.65rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .submit-btn:hover {
-  opacity: 0.9;
+  opacity: 0.95;
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(34, 197, 94, 0.22);
 }
 
-/* --- Ajustes Responsivos (Móvil y Tablets) --- */
+.submit-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.form-error-message,
+.form-success-message {
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.form-error-message {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.form-success-message {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.transaction-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.35);
+  backdrop-filter: blur(2px);
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+}
+
+.transaction-box {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.25);
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.transaction-box p {
+  margin: 0;
+}
+
+.spinner {
+  width: 22px;
+  height: 22px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #16a34a;
+  border-radius: 999px;
+  display: inline-block;
+  animation: create-ride-spin 0.8s linear infinite;
+}
+
+.floating-toast {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 2100;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  font-weight: 800;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.18);
+}
+
+.floating-toast.success {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.floating-toast.error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+@keyframes create-ride-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive */
 @media (max-width: 992px) {
   .u-ride-container {
-    grid-template-columns: 1fr; /* Colapsa la barra lateral */
+    grid-template-columns: 1fr;
   }
 
   .app-sidebar {
-    display: none; /* Ocultamos el sidebar en móvil por ahora */
+    display: none;
+  }
+
+  .header-inner {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 0.85rem 1.25rem;
+    min-height: 78px;
+  }
+
+  .header-copy {
+    grid-column: 1;
+  }
+
+  .user-profile {
+    grid-column: 2;
   }
 
   .view-layout {
-    grid-template-columns: 1fr; /* Apila el mapa y el formulario */
-    height: auto;
-    gap: 1rem;
-    padding: 1rem;
+    grid-template-columns: 1fr;
+    padding: 1.25rem;
+    min-height: auto;
   }
 
-  .map-placeholder {
-    height: 200px; /* Le damos altura fija al mapa en móvil */
+  .form-card {
+    grid-column: 1;
+    padding: 1.5rem 1.25rem;
+    border-radius: 16px;
   }
 
   .date-time-row {
-    grid-template-columns: 1fr; /* Apila Fecha y Hora */
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .header-inner {
+    grid-template-columns: 1fr;
+    row-gap: 0.75rem;
   }
 
+  .header-copy {
+    grid-column: 1;
+  }
+
+  .user-profile {
+    grid-column: 1;
+    justify-self: end;
+  }
+
+  .header h1 {
+    font-size: 1.2rem;
+  }
+
+  .header-copy p {
+    font-size: 0.8rem;
+  }
+
+  .form-card {
+    padding: 1.25rem 1rem;
+  }
 }

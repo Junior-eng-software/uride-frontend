@@ -340,6 +340,13 @@
     box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.08);
 }
 
+.ep-field-wrapper--readonly,
+.ep-field-wrapper--readonly:focus-within {
+    background-color: #f9fafb;
+    border-color: #e5e7eb;
+    box-shadow: none;
+}
+
 .ep-field-icon {
     position: absolute;
     left: 12px;
@@ -363,6 +370,16 @@
 
 .ep-field-input::placeholder {
     color: #c4c9d4;
+}
+
+.ep-field-wrapper--readonly .ep-field-input {
+    color: #6b7280;
+    cursor: default;
+}
+
+.ep-field-help {
+    font-size: 12px;
+    color: #9ca3af;
 }
 
 /* ── Error de campo ─────────────────────────────────────── */

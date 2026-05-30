@@ -8,12 +8,23 @@ import './RegisterForm.css';
 import { useNavigate } from 'react-router-dom';
 
 
-// ── Esquema Zod INTACTO ────────────────────────────────────────────────
+const normalizeFullName = (value: string) => value.trim().replace(/\s+/g, ' ');
+
+const isValidFullName = (value: string) =>
+    /^[A-Za-zÁÉÍÓÚáéíóúÑñ]+(?:[-\s][A-Za-zÁÉÍÓÚáéíóúÑñ]+)+$/.test(
+        normalizeFullName(value)
+    );
+
+// ── Esquema Zod ────────────────────────────────────────────────────────
 const registerSchema = z.object({
-    fullName: z.string().min(3, 'El nombre debe tener al menos 3 caracteres'),
+    fullName: z.string()
+        .refine(isValidFullName, {
+            message: 'El nombre debe contener al menos dos palabras y solo letras, tildes, ñ o guiones.'
+        }),
     email: z.string()
         .email('Formato de correo inválido')
         .endsWith('@uta.edu.ec', 'U-Ride es exclusivo para la UTA. Usa tu correo @uta.edu.ec'),
+    career: z.string().min(1, 'Debes seleccionar una carrera'),
     phone: z.string().min(10, 'El teléfono debe tener 10 dígitos').optional(),
     password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres')
 });
@@ -21,7 +32,7 @@ const registerSchema = z.object({
 type RegisterFormData = z.infer<typeof registerSchema>;
 
 export default function RegisterForm() {
-const navigate = useNavigate();
+    const navigate = useNavigate();
 
     // ── useState INTACTOS ──────────────────────────────────────────────
     const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -41,11 +52,17 @@ const navigate = useNavigate();
             setStatusMessage({ type: 'error', text: 'Debes aceptar los Términos de Servicio para continuar.' });
             return;
         }
+
+        const normalizedFullName = normalizeFullName(data.fullName);
+
         setIsLoading(true);
         setStatusMessage(null);
 
         try {
-            const response = await api.post('/auth/register', data);
+            const response = await api.post('/auth/register', {
+                ...data,
+                fullName: normalizedFullName
+            });
             if (response.status === 201) {
                 setStatusMessage({ type: 'success', text: response.data.message });
                 setTimeout(() => navigate('/verify'), 2000);
@@ -157,18 +174,21 @@ const navigate = useNavigate();
                             </div>
                             <div className="field-group">
                                 <label className="field-label">Carrera / Facultad</label>
-                                <div className="field-input-wrapper field-input-wrapper--select">
-                                    <select className="field-input field-select" defaultValue="">
+                                <div className={`field-input-wrapper field-input-wrapper--select ${errors.career ? 'field-input-wrapper--error' : ''}`}>
+                                    <select className="field-input field-select" defaultValue="" {...register('career')}>
                                         <option value="" disabled>Selecciona tu carrera...</option>
-                                        <option>Ingeniería en Software</option>
-                                        <option>Ingeniería en Sistemas</option>
-                                        <option>Ingeniería Civil</option>
-                                        <option>Medicina</option>
-                                        <option>Derecho</option>
-                                        <option>Otra</option>
+                                        <option value="Ingeniería en Software">Ingeniería en Software</option>
+                                        <option value="Ingeniería en Sistemas">Ingeniería en Sistemas</option>
+                                        <option value="Ingeniería Civil">Ingeniería Civil</option>
+                                        <option value="Medicina">Medicina</option>
+                                        <option value="Derecho">Derecho</option>
+                                        <option value="Otra">Otra</option>
                                     </select>
                                     <i className="ti ti-chevron-down field-icon-right" aria-hidden="true"></i>
                                 </div>
+                                {errors.career && (
+                                    <span className="field-error">{errors.career.message}</span>
+                                )}
                             </div>
                         </div>
 

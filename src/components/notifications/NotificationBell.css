@@ -156,3 +156,7 @@
 .notification-item.reportdismissed {
   border-left: 4px solid #64748b;
 }
+
+.notification-item.ridecancelled {
+  border-left: 4px solid #dc2626;
+}

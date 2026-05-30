@@ -10,6 +10,9 @@ export interface Ride {
   availableSeats: number; 
   notes: string | null;
   status: string;
+  cancellationReason?: string | null;
+  cancelledAt?: string | null;
+  estimatedCostPerPassenger: number;
 }
 
 export interface CreateRidePayload {
@@ -18,6 +21,7 @@ export interface CreateRidePayload {
   departureAt: string; 
   seatCapacity: number; 
   notes: string | null;
+  estimatedCostPerPassenger: number;
 }
 
 export interface RideSearchFilters {
@@ -25,6 +29,7 @@ export interface RideSearchFilters {
   destinationZone?: string;
   from?: string; 
   to?: string; 
+  departureTime?: string;
   availableOnly?: boolean;
   userId?: string;
   page?: number;

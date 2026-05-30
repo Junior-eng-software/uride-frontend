@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { getRideById } from "../services/rideService";
+import axios from "axios";
+import { cancelRide, getMyRides, getRideById } from "../services/rideService";
 import type { Ride } from "../types/rides";
 import { getCurrentUserId } from "../utils/auth";
 import "./RideDetailView.css";
@@ -28,6 +29,29 @@ const RideDetailView = () => {
   const [ride, setRide] = useState<Ride | null>(initialRide ?? null);
   const [isLoading, setIsLoading] = useState(!initialRide);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isConfirmedPassenger, setIsConfirmedPassenger] = useState(false);
+  const [isCheckingParticipation, setIsCheckingParticipation] = useState(false);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const [isCancellingRide, setIsCancellingRide] = useState(false);
+  const currentUserId = getCurrentUserId();
+  const isDriver = ride?.driverId === currentUserId;
+  const normalizedStatus = ride?.status.toLowerCase() ?? "";
+  const isCompletedRide = normalizedStatus === "completed";
+  const canCancelRide =
+    isDriver && ride?.status !== "Completed" && ride?.status !== "Cancelled";
+  const shouldCheckPassengerParticipation = Boolean(
+    ride?.id && currentUserId && !isDriver,
+  );
+  const effectiveIsConfirmedPassenger = shouldCheckPassengerParticipation
+    ? isConfirmedPassenger
+    : false;
+  const effectiveIsCheckingParticipation = shouldCheckPassengerParticipation
+    ? isCheckingParticipation
+    : false;
+  const canPassengerRateDriver =
+    !isDriver && isCompletedRide && effectiveIsConfirmedPassenger;
 
   useEffect(() => {
     if (ride || !rideId) return;
@@ -49,6 +73,86 @@ const RideDetailView = () => {
 
     void fetchRide();
   }, [ride, rideId]);
+
+  useEffect(() => {
+    if (!shouldCheckPassengerParticipation || !ride?.id) return;
+
+    const checkPassengerParticipation = async () => {
+      try {
+        setIsCheckingParticipation(true);
+        setIsConfirmedPassenger(false);
+
+        const myRides = await getMyRides();
+        const belongsToCurrentUser = myRides.some(
+          (myRide) => myRide.id === ride.id,
+        );
+
+        setIsConfirmedPassenger(belongsToCurrentUser);
+      } catch (error) {
+        console.warn(
+          "No se pudo verificar la participacion del usuario en el viaje",
+          error,
+        );
+        setIsConfirmedPassenger(false);
+      } finally {
+        setIsCheckingParticipation(false);
+      }
+    };
+
+    void checkPassengerParticipation();
+  }, [ride?.id, shouldCheckPassengerParticipation]);
+
+  const handleConfirmCancelRide = async () => {
+    if (!rideId) {
+      return;
+    }
+
+    const trimmedReason = cancelReason.trim();
+
+    if (!trimmedReason) {
+      setCancelError("Debe ingresar un motivo de cancelación.");
+      return;
+    }
+
+    if (trimmedReason.length > 500) {
+      setCancelError(
+        "El motivo de cancelación no puede superar los 500 caracteres.",
+      );
+      return;
+    }
+
+    try {
+      setIsCancellingRide(true);
+      setCancelError(null);
+
+      await cancelRide(rideId, {
+        reason: trimmedReason,
+      });
+
+      setIsCancelModalOpen(false);
+      setCancelReason("");
+
+      const updatedRide = await getRideById(rideId);
+      setRide(updatedRide);
+    } catch (error) {
+      let message = "Error al cancelar el viaje. Inténtalo nuevamente.";
+
+      if (axios.isAxiosError(error)) {
+        const backendMessage =
+          typeof error.response?.data === "string"
+            ? error.response.data
+            : error.response?.data?.detail ?? error.response?.data?.message;
+
+        if (backendMessage) {
+          message = backendMessage;
+        }
+      }
+
+      setCancelError(message);
+    } finally {
+      setIsCancellingRide(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -75,11 +179,65 @@ const RideDetailView = () => {
     );
   }
 
-  const currentUserId = getCurrentUserId();
-  const isDriver = ride.driverId === currentUserId;
-
   return (
     <main className="ride-detail-page">
+      {isCancellingRide && (
+        <div className="transaction-overlay">
+          <div className="transaction-box">
+            <span className="spinner"></span>
+            <p>Cancelando viaje...</p>
+          </div>
+        </div>
+      )}
+
+      {isCancelModalOpen && (
+        <div className="cancel-modal-backdrop">
+          <div className="cancel-modal">
+            <h3>Cancelar viaje</h3>
+
+            <p>
+              Esta acción cancelará el viaje y notificará a los pasajeros
+              aceptados.
+            </p>
+
+            <label htmlFor="cancelReason">Motivo de cancelación</label>
+
+            <textarea
+              id="cancelReason"
+              value={cancelReason}
+              onChange={(event) => setCancelReason(event.target.value)}
+              maxLength={500}
+              placeholder="Ej: Me equivoqué en la hora de salida"
+              disabled={isCancellingRide}
+            />
+
+            {cancelError && (
+              <p className="cancel-error-message">{cancelError}</p>
+            )}
+
+            <div className="cancel-modal-actions">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setIsCancelModalOpen(false)}
+                disabled={isCancellingRide}
+              >
+                Volver
+              </button>
+
+              <button
+                type="button"
+                className="btn-danger"
+                onClick={() => void handleConfirmCancelRide()}
+                disabled={isCancellingRide}
+              >
+                {isCancellingRide ? "Cancelando..." : "Confirmar cancelación"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <header className="ride-detail-header">
         <button className="btn-back" onClick={() => navigate("/dashboard")}>
           {"<-"} Volver al Dashboard
@@ -194,7 +352,47 @@ const RideDetailView = () => {
                 Gestionar viaje
               </button>
             )}
+
+            {canCancelRide && (
+              <button
+                type="button"
+                className="btn-danger"
+                onClick={() => {
+                  setCancelError(null);
+                  setCancelReason("");
+                  setIsCancelModalOpen(true);
+                }}
+              >
+                Cancelar viaje
+              </button>
+            )}
+
+            {canPassengerRateDriver && (
+              <button
+                className="btn-primary"
+                onClick={() =>
+                  navigate(`/rides/${ride.id}/manage`, {
+                    state: { ride },
+                  })
+                }
+              >
+                Calificar conductor
+              </button>
+            )}
           </div>
+
+          {!isDriver && effectiveIsCheckingParticipation && (
+            <p className="detail-action-note">
+              Verificando acciones disponibles...
+            </p>
+          )}
+
+          {!isDriver && effectiveIsConfirmedPassenger && !isCompletedRide && (
+            <p className="detail-action-note">
+              Las acciones del pasajero estaran disponibles cuando el viaje
+              finalice.
+            </p>
+          )}
         </section>
       </div>
     </main>

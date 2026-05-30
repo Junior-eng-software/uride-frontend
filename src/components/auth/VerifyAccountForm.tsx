@@ -11,9 +11,9 @@ import './VerifyAccountForm.css';
 
 
 
-// ── Schema Zod INTACTO ─────────────────────────────────────────────────
+// ── Schema Zod ─────────────────────────────────────────────────────────
 const verifySchema = z.object({
-    token: z.string().min(10, 'El token no parece ser válido')
+    token: z.string().trim().regex(/^\d{6}$/, 'El código debe tener 6 dígitos.')
 });
 
 type VerifyFormData = z.infer<typeof verifySchema>;
@@ -24,8 +24,9 @@ export default function VerifyAccountForm() {
     // ── useState INTACTOS ──────────────────────────────────────────────
     const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [token, setToken] = useState('');
 
-    const { register, handleSubmit, formState: { errors } } = useForm<VerifyFormData>({
+    const { register, handleSubmit, setValue, formState: { errors } } = useForm<VerifyFormData>({
         resolver: zodResolver(verifySchema)
     });
 
@@ -35,7 +36,7 @@ export default function VerifyAccountForm() {
         setStatusMessage(null);
 
         try {
-            const response = await api.post('/auth/verify-account', { token: data.token });
+            const response = await api.post('/auth/verify-account', { token: data.token.trim() });
             if (response.status === 200) {
                 setStatusMessage({ type: 'success', text: '¡Cuenta verificada exitosamente! Ya puedes iniciar sesión.' });
                 setTimeout(() => navigate('/login'), 2000);
@@ -104,7 +105,7 @@ export default function VerifyAccountForm() {
                     <div className="verify-card-header">
                         <h1 className="verify-title">Verifica tu cuenta</h1>
                         <p className="verify-subtitle">
-                            Revisa tu correo institucional y pega el token de activación que te enviamos.
+                            Revisa tu correo institucional e ingresa el código de activación de 6 dígitos que te enviamos.
                         </p>
                     </div>
 
@@ -112,7 +113,7 @@ export default function VerifyAccountForm() {
                     <div className="verify-info-banner">
                         <i className="ti ti-info-circle" aria-hidden="true"></i>
                         <span>
-                            El token fue enviado a tu correo <strong>@uta.edu.ec</strong>. Revisa también la carpeta de spam.
+                            El código fue enviado a tu correo <strong>@uta.edu.ec</strong>. Revisa también la carpeta de spam.
                         </span>
                     </div>
 
@@ -126,20 +127,28 @@ export default function VerifyAccountForm() {
 
                     <form onSubmit={handleSubmit(onSubmit)} className="verify-form" noValidate>
 
-                        {/* Token de activación */}
+                        {/* Código de activación */}
                         <div className="verify-field-group">
                             <label className="verify-field-label">
-                                Token de Activación
+                                Código de activación
                             </label>
                             <div className={`verify-field-wrapper ${errors.token ? 'verify-field-wrapper--error' : ''}`}>
                                 <i className="ti ti-key verify-field-icon" aria-hidden="true"></i>
                                 <input
                                     type="text"
-                                    placeholder="Pega tu token aquí..."
+                                    inputMode="numeric"
+                                    maxLength={6}
+                                    placeholder="Ingresa el código de 6 dígitos"
                                     className="verify-field-input"
                                     autoComplete="off"
                                     spellCheck={false}
+                                    value={token}
                                     {...register('token')}
+                                    onChange={(event) => {
+                                        const onlyDigits = event.target.value.replace(/\D/g, '').slice(0, 6);
+                                        setToken(onlyDigits);
+                                        setValue('token', onlyDigits, { shouldValidate: true });
+                                    }}
                                 />
                             </div>
                             {errors.token && (

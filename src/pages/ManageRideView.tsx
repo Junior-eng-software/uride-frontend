@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { getRideRequests, respondToRideRequest } from '../services/rideRequestService';
-import { completeRide, getMyRides } from '../services/rideService';
+import { cancelRide, completeRide, getMyRides, getRideById } from '../services/rideService';
 import { getRideRatings } from '../services/ratingService';
 import type { RideRequest } from '../types/rideRequest';
 import type { Ride } from '../types/rides';
@@ -32,7 +32,18 @@ const ManageRideView: React.FC = () => {
     const isDriver = currentUserId === ride?.driverId;
     const rideId = ride?.id ?? rideIdFromUrl;
     const isCompletedRide = ride?.status === 'Completed';
+    const isCancelledRide = ride?.status === 'Cancelled';
     const canComplete = ride?.status === 'Published';
+    const canCancelRide =
+        !!ride &&
+        isDriver &&
+        ride.status !== 'Completed' &&
+        ride.status !== 'Cancelled';
+
+    const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+    const [cancelReason, setCancelReason] = useState("");
+    const [cancelError, setCancelError] = useState<string | null>(null);
+    const [isCancellingRide, setIsCancellingRide] = useState(false);
 
     const hasAlreadyRated = (rateeId?: string | null): boolean => {
         if (!rateeId || !currentUserId) {
@@ -153,6 +164,7 @@ const ManageRideView: React.FC = () => {
 
     const handleCompleteRide = async () => {
         if (!rideId) return;
+        if (isCompleting) return;
         if (ride?.status !== 'Published') {
             setError('Este viaje no puede completarse en su estado actual.');
             return;
@@ -162,16 +174,14 @@ const ManageRideView: React.FC = () => {
         try {
             setIsCompleting(true);
             await completeRide(rideId);
-            const refreshed = await getMyRides();
-            const updated = refreshed.find(r => r.id === rideId) ?? null;
-            setRide(updated ?? ride);
+            const updatedRide = await getRideById(rideId);
+            setRide(updatedRide);
         } catch (error) {
             if (axios.isAxiosError(error) && error.response?.status === 400) {
                 setError('El viaje no puede completarse. Recarga la página e inténtalo de nuevo.');
                 try {
-                    const refreshed = await getMyRides();
-                    const updated = refreshed.find(r => r.id === rideId) ?? null;
-                    setRide(updated ?? ride);
+                    const updatedRide = await getRideById(rideId);
+                    setRide(updatedRide);
                 } catch {
                     // Si la sincronización falla, mantenemos el error principal.
                 }
@@ -181,6 +191,58 @@ const ManageRideView: React.FC = () => {
             setError('Ocurrió un error al completar el viaje.');
         } finally {
             setIsCompleting(false);
+        }
+    };
+
+    const handleConfirmCancelRide = async () => {
+        if (!rideId) {
+            return;
+        }
+
+        const trimmedReason = cancelReason.trim();
+
+        if (!trimmedReason) {
+            setCancelError("Debe ingresar un motivo de cancelación.");
+            return;
+        }
+
+        if (trimmedReason.length > 500) {
+            setCancelError(
+                "El motivo de cancelación no puede superar los 500 caracteres."
+            );
+            return;
+        }
+
+        try {
+            setIsCancellingRide(true);
+            setCancelError(null);
+
+            await cancelRide(rideId, {
+                reason: trimmedReason,
+            });
+
+            setIsCancelModalOpen(false);
+            setCancelReason("");
+
+            const updatedRide = await getRideById(rideId);
+            setRide(updatedRide);
+        } catch (error) {
+            let message = "Error al cancelar el viaje. Inténtalo nuevamente.";
+
+            if (axios.isAxiosError(error)) {
+                const backendMessage =
+                    typeof error.response?.data === "string"
+                        ? error.response.data
+                        : (error.response?.data?.detail ?? error.response?.data?.message);
+
+                if (backendMessage) {
+                    message = backendMessage;
+                }
+            }
+
+            setCancelError(message);
+        } finally {
+            setIsCancellingRide(false);
         }
     };
 
@@ -269,9 +331,9 @@ const ManageRideView: React.FC = () => {
                         </div>
                         <div className="seats-indicator">
                             <div className="seats-text">
-                                <span className="seats-label">{isCompletedRide ? 'ESTADO' : 'CUPOS DISPONIBLES'}</span>
-                                <span className={`seats-count ${isCompletedRide ? 'completed' : ''}`}>
-                                    {isCompletedRide ? 'Completado' : `${availableSeats} de ${totalSeats}`}
+                                <span className="seats-label">{(isCompletedRide || isCancelledRide) ? 'ESTADO' : 'CUPOS DISPONIBLES'}</span>
+                                <span className={`seats-count ${isCompletedRide ? 'completed' : isCancelledRide ? 'cancelled' : ''}`}>
+                                    {isCompletedRide ? 'Completado' : isCancelledRide ? 'Cancelado' : `${availableSeats} de ${totalSeats}`}
                                 </span>
                             </div>
                             <div className="seats-visual">
@@ -280,7 +342,7 @@ const ManageRideView: React.FC = () => {
                                         <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=100&h=100" alt={request.passengerName} />
                                     </div>
                                 ))}
-                                {!isCompletedRide && Array.from({ length: Math.max(availableSeats, 0) }).map((_, i) => (
+                                {!(isCompletedRide || isCancelledRide) && Array.from({ length: Math.max(availableSeats, 0) }).map((_, i) => (
                                     <div key={i} className="seat-avatar empty">
                                         <i className="ti ti-plus"></i>
                                     </div>
@@ -291,7 +353,7 @@ const ManageRideView: React.FC = () => {
 
                     <div className="manage-grid">
                         {/* Column: Pending Requests */}
-                        {!isCompletedRide && (
+                        {!(isCompletedRide || isCancelledRide) && (
                             <section className="requests-column">
                                 <h3 className="section-title">Solicitudes Pendientes ({pendingRequests.length})</h3>
                                 <div className="requests-list">
@@ -349,7 +411,7 @@ const ManageRideView: React.FC = () => {
                                             )}
                                         </div>
                                     ))}
-                                    {!isCompletedRide && Array.from({ length: Math.max(0, availableSeats) }).map((_, i) => (
+                                    {!(isCompletedRide || isCancelledRide) && Array.from({ length: Math.max(0, availableSeats) }).map((_, i) => (
                                         <div key={`empty-${i}`} className="confirmed-item empty">
                                             <div className="passenger-info">
                                                 <div className="avatar-placeholder empty">
@@ -360,7 +422,7 @@ const ManageRideView: React.FC = () => {
                                         </div>
                                     ))}
                                     {isCompletedRide && !isDriver && renderRatingControl(driverId, driverName, 'driver')}
-                                    {isCompletedRide && confirmedRequests.length === 0 && (
+                                    {(isCompletedRide || isCancelledRide) && confirmedRequests.length === 0 && (
                                         <p className="empty-history">No hubo pasajeros confirmados en este viaje.</p>
                                     )}
                                 </div>
@@ -374,14 +436,85 @@ const ManageRideView: React.FC = () => {
                                         {isCompleting ? 'Completando...' : 'Completar Viaje'}
                                     </button>
                                 )}
+                                {canCancelRide && (
+                                    <button
+                                        type="button"
+                                        className="btn-danger"
+                                        style={{ marginTop: '0.75rem' }}
+                                        onClick={() => {
+                                            setCancelError(null);
+                                            setCancelReason("");
+                                            setIsCancelModalOpen(true);
+                                        }}
+                                    >
+                                        Cancelar viaje
+                                    </button>
+                                )}
                                 {ride?.status === 'Completed' && (
                                     <span className="rating-submitted-badge" style={{ marginTop: '1rem' }}>Viaje completado</span>
+                                )}
+                                {ride?.status === 'Cancelled' && (
+                                    <span className="rating-submitted-badge" style={{ marginTop: '1rem', background: '#fee2e2', color: '#991b1b' }}>Viaje cancelado</span>
                                 )}
                             </div>
                         </section>
                     </div>
                 </div>
             </main>
+
+            {isCancelModalOpen && (
+                <div className="cancel-modal-backdrop">
+                    <div className="cancel-modal">
+                        <h3>Cancelar viaje</h3>
+
+                        <p>
+                            Esta acción cancelará el viaje y notificará a los pasajeros aceptados.
+                        </p>
+
+                        <label htmlFor="cancelReason">Motivo de cancelación</label>
+
+                        <textarea
+                            id="cancelReason"
+                            value={cancelReason}
+                            onChange={(event) => setCancelReason(event.target.value)}
+                            maxLength={500}
+                            placeholder="Ej: Me equivoqué en la hora de salida"
+                            disabled={isCancellingRide}
+                        />
+
+                        {cancelError && <p className="cancel-error-message">{cancelError}</p>}
+
+                        <div className="cancel-modal-actions">
+                            <button
+                                type="button"
+                                className="btn-secondary"
+                                onClick={() => setIsCancelModalOpen(false)}
+                                disabled={isCancellingRide}
+                            >
+                                Volver
+                            </button>
+
+                            <button
+                                type="button"
+                                className="btn-danger"
+                                onClick={() => void handleConfirmCancelRide()}
+                                disabled={isCancellingRide}
+                            >
+                                {isCancellingRide ? "Cancelando..." : "Confirmar cancelación"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {isCancellingRide && (
+                <div className="transaction-overlay">
+                    <div className="transaction-box">
+                        <span className="spinner"></span>
+                        <p>Cancelando viaje...</p>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

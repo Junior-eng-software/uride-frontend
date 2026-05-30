@@ -8,15 +8,28 @@ import { AxiosError } from 'axios';
 import './EditProfileForm.css';
 import AppSidebar from '../layout/AppSidebar';
 
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
-// ── Schema Zod INTACTO ─────────────────────────────────────────────────
+const normalizeFullName = (value: string) => value.trim().replace(/\s+/g, ' ');
+
+const isValidFullName = (value: string) =>
+    /^[A-Za-zÁÉÍÓÚáéíóúÑñ]+(?:[-\s][A-Za-zÁÉÍÓÚáéíóúÑñ]+)+$/.test(
+        normalizeFullName(value)
+    );
+
+// ── Schema Zod para campos editables ───────────────────────────────────
 const editProfileSchema = z.object({
-    fullName: z.string().min(3, 'El nombre debe tener al menos 3 caracteres'),
-    email: z.string()
-        .email('Formato inválido')
-        .endsWith('@uta.edu.ec', 'Recuerda usar tu dominio institucional (@uta.edu.ec)'),
-    phone: z.string().optional()
+    fullName: z.string()
+        .refine(isValidFullName, {
+            message: 'El nombre debe contener al menos dos palabras y solo letras, tildes, ñ o guiones.'
+        }),
+    career: z.string().min(1, 'Selecciona o ingresa tu carrera'),
+    referenceZone: z.string().max(150, 'Máximo 150 caracteres').optional(),
+    phone: z.string()
+        .optional()
+        .refine(val => !val || /^09\d{8}$/.test(val), {
+            message: 'El teléfono debe tener 10 dígitos y empezar con 09.'
+        })
 });
 
 type EditProfileData = z.infer<typeof editProfileSchema>;
@@ -29,23 +42,25 @@ const getInitials = (name: string): string => {
 };
 
 export default function EditProfileForm() {
-    const navigate = useNavigate();
     const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
     // ── Estado adicional solo para UI (nombre cargado para el avatar) ──
     const [loadedName, setLoadedName] = useState('');
+    const [institutionalEmail, setInstitutionalEmail] = useState('');
 
     const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<EditProfileData>({
         resolver: zodResolver(editProfileSchema)
     });
 
-    // ── useEffect INTACTO ──────────────────────────────────────────────
+    // ── useEffect MODIFICADO ───────────────────────────────────────────
     useEffect(() => {
         api.get('/users/me')
             .then(res => {
                 setValue('fullName', res.data.fullName);
-                setValue('email', res.data.email);
+                setInstitutionalEmail(res.data.email);
+                setValue('career', res.data.career ?? '');
+                setValue('referenceZone', res.data.referenceZone ?? '');
                 setValue('phone', res.data.phone || '');
                 setLoadedName(res.data.fullName);
             })
@@ -54,33 +69,25 @@ export default function EditProfileForm() {
             });
     }, [setValue]);
 
-    // ── onSubmit MODIFICADO PARA REDIRECCIÓN ───────────────────────────
+    // ── Guardado de campos editables ───────────────────────────────────
     const onSubmit = async (data: EditProfileData) => {
         setIsLoading(true);
         setStatusMessage(null);
 
+        // Limpiar espacios y preparar el body
+        const normalizedFullName = normalizeFullName(data.fullName);
+        const payload = {
+            fullName: normalizedFullName,
+            career: data.career.trim(),
+            referenceZone: data.referenceZone?.trim() || null,
+            phone: data.phone?.trim() || null
+        };
+
         try {
-            const response = await api.put('/users/me', data);
+            const response = await api.put('/users/me', payload);
             if (response.status === 200) {
-                setLoadedName(data.fullName);
-
-                // Verificamos si el backend exige re-verificación por cambio de correo
-                if (response.data.message.includes('re-verificación')) {
-                    setStatusMessage({
-                        type: 'success',
-                        text: 'Correo actualizado. Por seguridad, tu sesión se cerrará. Redirigiendo a verificación...'
-                    });
-
-                    setTimeout(() => {
-                        localStorage.removeItem('accessToken');
-                        localStorage.removeItem('refreshToken');
-                        // Redirigimos explícitamente a la pantalla de verificación
-                        navigate('/verify');
-                    }, 3000);
-                } else {
-                    // Si no hubo cambio de correo, mensaje normal
-                    setStatusMessage({ type: 'success', text: response.data.message });
-                }
+                setLoadedName(payload.fullName);
+                setStatusMessage({ type: 'success', text: response.data.message });
             }
         } catch (error) {
             if (error instanceof AxiosError && error.response) {
@@ -145,14 +152,6 @@ export default function EditProfileForm() {
                             Universidad Técnica de Ambato (UTA)
                         </p>
 
-                        <div className="ep-warning-banner">
-                            <i className="ti ti-alert-triangle" aria-hidden="true"></i>
-                            <span>
-                                Si cambias tu <strong>correo</strong>, deberás volver a verificar tu cuenta.
-                                Tu sesión se cerrará automáticamente.
-                            </span>
-                        </div>
-
                         {statusMessage && (
                             <div className={`ep-status-alert ep-status-alert--${statusMessage.type}`}>
                                 <i className={`ti ${statusMessage.type === 'success' ? 'ti-circle-check' : 'ti-alert-circle'}`} aria-hidden="true"></i>
@@ -194,19 +193,67 @@ export default function EditProfileForm() {
                                     </div>
                                     Correo Institucional
                                 </label>
-                                <div className={`ep-field-wrapper ${errors.email ? 'ep-field-wrapper--error' : ''}`}>
+                                <div className="ep-field-wrapper ep-field-wrapper--readonly">
                                     <i className="ti ti-mail ep-field-icon" aria-hidden="true"></i>
                                     <input
                                         type="email"
-                                        placeholder="ejemplo@uta.edu.ec"
                                         className="ep-field-input"
-                                        {...register('email')}
+                                        value={institutionalEmail}
+                                        readOnly
                                     />
                                 </div>
-                                {errors.email && (
+                                <span className="ep-field-help">
+                                    No editable · identifica tu cuenta institucional
+                                </span>
+                            </div>
+
+                            {/* Carrera */}
+                            <div className="ep-field-group">
+                                <label className="ep-field-label">
+                                    <div className="ep-field-label-icon">
+                                        <i className="ti ti-book" aria-hidden="true"></i>
+                                    </div>
+                                    CARRERA
+                                </label>
+                                <div className={`ep-field-wrapper ${errors.career ? 'ep-field-wrapper--error' : ''}`}>
+                                    <i className="ti ti-book ep-field-icon" aria-hidden="true"></i>
+                                    <input
+                                        type="text"
+                                        placeholder="Ej. Software"
+                                        className="ep-field-input"
+                                        {...register('career')}
+                                    />
+                                </div>
+                                {errors.career && (
                                     <span className="ep-field-error">
                                         <i className="ti ti-alert-triangle" aria-hidden="true"></i>
-                                        {errors.email.message}
+                                        {errors.career.message}
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Zona/Barrio de referencia */}
+                            <div className="ep-field-group">
+                                <label className="ep-field-label">
+                                    <div className="ep-field-label-icon">
+                                        <i className="ti ti-map-pin" aria-hidden="true"></i>
+                                    </div>
+                                    ZONA/BARRIO DE REFERENCIA
+                                </label>
+                                <div className={`ep-field-wrapper ${errors.referenceZone ? 'ep-field-wrapper--error' : ''}`}>
+                                    <i className="ti ti-map-pin ep-field-icon" aria-hidden="true"></i>
+                                    <input
+                                        type="text"
+                                        placeholder="Ej. Huachi Chico"
+                                        className="ep-field-input"
+                                        maxLength={150}
+                                        {...register('referenceZone')}
+                                    />
+                                </div>
+                                {errors.referenceZone && (
+                                    <span className="ep-field-error">
+                                        <i className="ti ti-alert-triangle" aria-hidden="true"></i>
+                                        {errors.referenceZone.message}
                                     </span>
                                 )}
                             </div>
@@ -224,9 +271,16 @@ export default function EditProfileForm() {
                                     <i className="ti ti-phone ep-field-icon" aria-hidden="true"></i>
                                     <input
                                         type="tel"
+                                        inputMode="numeric"
+                                        maxLength={10}
                                         placeholder="09XXXXXXXX"
                                         className="ep-field-input"
-                                        {...register('phone')}
+                                        {...register('phone', {
+                                            onChange: (e) => {
+                                                const onlyDigits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                                e.target.value = onlyDigits;
+                                            }
+                                        })}
                                     />
                                 </div>
                                 {errors.phone && (

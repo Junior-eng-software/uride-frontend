@@ -125,7 +125,7 @@ const DashboardView: React.FC = () => {
         navigate(`/rides/${ride.id}/manage`, { state: { ride } });
     };
 
-    const activeRides = rides.filter(ride => ride.status !== 'Completed');
+    const activeRides = rides.filter(ride => ride.status === 'Published');
     const completedRides = rides.filter(ride => ride.status === 'Completed');
     const currentUserId = currentUser?.id;
     const authenticatedUserId = getCurrentUserId();
